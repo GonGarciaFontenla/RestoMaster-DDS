@@ -1,0 +1,12 @@
+{
+  "name": "restomaster-iteracion-1",
+  "version": "1.0.0",
+  "description": "RestoMaster - Iteración 1: Modelo de Objetos y Dominio",
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+  },
+  "devDependencies": {
+    "jest": "^30.0.0"
+  }
+}
