@@ -1,4 +1,4 @@
-# RestoMaster — Iteración 2: Exposición de APIs, Servicios y DTOs
+# RestoMaster — Iteración 2: Exposición de APIs, Servicios y DTOs (+ Bonus: Auth JWT)
 
 ## 🎯 Objetivo de esta iteración
 
@@ -14,34 +14,41 @@ src/
 │   ├── MesasService.js       → Lógica de negocio para mesas
 │   ├── MenuService.js        → Lógica de negocio para el menú
 │   ├── PedidosService.js     → Lógica de negocio para comandas
-│   └── ReservasService.js    → Lógica de negocio para reservas
+│   ├── ReservasService.js    → Lógica de negocio para reservas
+│   └── UserService.js        → [Bonus] Login, registro y gestión de usuarios
 ├── controllers/
-│   ├── MesasController.js    → HTTP handlers para /api/mesas
-│   ├── MenuController.js     → HTTP handlers para /api/menu
-│   ├── PedidosController.js  → HTTP handlers para /api/pedidos
-│   └── ReservasController.js → HTTP handlers para /api/reservas
+│   ├── MesasController.js
+│   ├── MenuController.js
+│   ├── PedidosController.js
+│   ├── ReservasController.js
+│   └── UserController.js     → [Bonus] Login, logout, CRUD de usuarios, /me
 ├── routes/
-│   ├── MesasRoutes.js
-│   ├── MenuRoutes.js
-│   ├── PedidosRoutes.js
-│   └── ReservasRoutes.js
+│   ├── MesasRoutes.js        → [Bonus] Protegidas con authenticate + requireRole
+│   ├── MenuRoutes.js         → [Bonus] Protegidas con authenticate + requireRole
+│   ├── PedidosRoutes.js      → [Bonus] Protegidas con authenticate + requireRole
+│   ├── ReservasRoutes.js     → [Bonus] Protegidas con authenticate + requireRole
+│   └── AuthRoutes.js         → [Bonus] /login, /logout, /me, /users
 ├── dtos/
-│   ├── MesasDTO.js           → Filtra qué campos de Mesa se exponen
-│   ├── PlatoDTO.js           → Filtra qué campos de Producto se exponen
-│   └── ReservaDTO.js         → Filtra qué campos de Reserva se exponen
+│   ├── MesasDTO.js
+│   ├── PlatoDTO.js
+│   ├── ReservaDTO.js
+│   └── UserDTO.js            → [Bonus] Nunca expone password ni restauranteId
 ├── middlewares/
-│   ├── errorHandler.js       → Captura todos los errores de la app y responde en JSON
-│   └── validator.js          → Valida el body de un request con un schema Zod
+│   ├── errorHandler.js
+│   ├── validator.js
+│   └── auth.js               → [Bonus] authenticate (JWT) + requireRole (roles)
 ├── validations/
 │   ├── mesaSchema.js
 │   ├── productoSchema.js
 │   ├── reservaSchema.js
 │   ├── comandaSchema.js
-│   └── itemComandaSchema.js
+│   ├── itemComandaSchema.js
+│   └── userSchema.js         → [Bonus] Validación de datos de usuario
 └── app/
-    └── context.js            → Ensambla los objetos (repositorios → servicios → controladores)
+    └── context.js
 
-index.js                      → Punto de entrada del servidor Express
+index.js
+.env.example                  → [Bonus] Variables de entorno requeridas
 ```
 
 ---
@@ -139,5 +146,58 @@ El servidor levanta en `http://localhost:4000`.
 
 ## 📌 Decisiones de diseño
 
-- **`req.restauranteId`** en lugar de `req.user.restauranteId`: en esta iteración el `restauranteId` se inyecta mediante un middleware temporal en `index.js`. Cuando se implemente la autenticación JWT (Bonus), ese middleware será reemplazado por one que decodifique el token.
-- **`ReservasService` recibe `mesasRepository` por constructor** en lugar de importar `MesaModel` directamente. Esto mantiene el servicio desacoplado de la base de datos.
+- **`req.restauranteId`** lo inyecta el middleware `authenticate` al decodificar el token. Todos los controllers lo leen de `req.restauranteId` con una interfaz unificada.
+- **`ReservasService` recibe `mesasRepository` por constructor** en lugar de importar `MesaModel` directamente. Esto lo desacopla de la base de datos.
+
+---
+
+## 🔐 Bonus: Autenticación y Autorización JWT
+
+### Flujo de autenticación
+
+```
+POST /api/auth/login
+  → UserService.login() verifica email + bcrypt.compare(password)
+  → Genera JWT con { id, tipo, restauranteId }
+  → Responde con cookie httpOnly + body con datos del usuario
+
+Requests siguientes:
+  → authenticate() lee la cookie (o header Authorization)
+  → jwt.verify() decodifica el token y popula req.user y req.restauranteId
+  → requireRole() verifica que req.user.tipo esté en la lista permitida
+```
+
+### Roles y permisos
+
+| Rol | Puede hacer |
+|-----|-------------|
+| `ADMIN` | Todo: crear mesas, platos, usuarios, eliminar reservas |
+| `MOZO` | Ver y actualizar mesas, crear/gestionar pedidos y reservas |
+| `COCINERO` | Ver pedidos activos y actualizar estado de ítems |
+
+### Nuevos endpoints
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| `POST` | `/api/auth/login` | ❌ Público | Inicia sesión y devuelve token |
+| `GET` | `/api/auth/me` | ✅ JWT | Devuelve el usuario autenticado |
+| `POST` | `/api/auth/logout` | ✅ JWT | Limpia la cookie de sesión |
+| `POST` | `/api/users` | ✅ ADMIN | Crea un nuevo usuario |
+| `GET` | `/api/users` | ✅ ADMIN | Lista todos los usuarios |
+| `PUT` | `/api/users/:id` | ✅ ADMIN | Actualiza un usuario |
+| `DELETE` | `/api/users/:id` | ✅ ADMIN | Elimina un usuario |
+
+### Variables de entorno requeridas
+
+Crear un archivo `.env` basado en `.env.example`:
+
+```bash
+cp .env.example .env
+# Editar .env y setear un JWT_SECRET seguro
+```
+
+```
+PORT=4000
+JWT_SECRET=tu_secreto_super_seguro_aqui
+NODE_ENV=development
+```

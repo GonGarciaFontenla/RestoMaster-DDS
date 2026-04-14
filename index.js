@@ -1,30 +1,25 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import { configureMenuRoutes } from "./src/routes/MenuRoutes.js";
 import { configureMesasRoutes } from "./src/routes/MesasRoutes.js";
 import { configurePedidosRoutes } from "./src/routes/PedidosRoutes.js";
 import { configureReservasRoutes } from "./src/routes/ReservasRoutes.js";
+import { configureAuthRoutes, configureUserRoutes } from "./src/routes/AuthRoutes.js";
 import { errorHandler } from "./src/middlewares/errorHandler.js";
 import { buildAppContext } from "./src/app/context.js";
 
 const app = express();
 
-app.use(cors());
+app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 app.use(express.json());
+app.use(cookieParser());
 
-/*
- * Middleware temporal: inyecta un restauranteId fijo en cada request.
- * Cuando se implemente la autenticación (Bonus), este bloque
- * será reemplazado por el middleware JWT que extrae el restauranteId del token.
- */
-app.use((req, res, next) => {
-  req.restauranteId = "restaurante-demo";
-  next();
-});
-
-const { menuController, mesasController, pedidosController, reservasController } =
+const { userController, menuController, mesasController, pedidosController, reservasController } =
   buildAppContext();
 
+app.use("/api/auth", configureAuthRoutes(userController));
+app.use("/api/users", configureUserRoutes(userController));
 app.use("/api/menu", configureMenuRoutes(menuController));
 app.use("/api/mesas", configureMesasRoutes(mesasController, pedidosController));
 app.use("/api/pedidos", configurePedidosRoutes(pedidosController));
