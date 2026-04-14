@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import { loadEnvFile } from "node:process";
+import { connectToDB } from "./src/app/db.js";
 import { configureMenuRoutes } from "./src/routes/MenuRoutes.js";
 import { configureMesasRoutes } from "./src/routes/MesasRoutes.js";
 import { configurePedidosRoutes } from "./src/routes/PedidosRoutes.js";
@@ -9,25 +11,33 @@ import { configureAuthRoutes, configureUserRoutes } from "./src/routes/AuthRoute
 import { errorHandler } from "./src/middlewares/errorHandler.js";
 import { buildAppContext } from "./src/app/context.js";
 
+loadEnvFile();
+
 const app = express();
 
 app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
-const { userController, menuController, mesasController, pedidosController, reservasController } =
-  buildAppContext();
+const startServer = async () => {
+  await connectToDB();
 
-app.use("/api/auth", configureAuthRoutes(userController));
-app.use("/api/users", configureUserRoutes(userController));
-app.use("/api/menu", configureMenuRoutes(menuController));
-app.use("/api/mesas", configureMesasRoutes(mesasController, pedidosController));
-app.use("/api/pedidos", configurePedidosRoutes(pedidosController));
-app.use("/api/reservas", configureReservasRoutes(reservasController));
+  const { userController, menuController, mesasController, pedidosController, reservasController } =
+    buildAppContext();
 
-app.use(errorHandler);
+  app.use("/api/auth", configureAuthRoutes(userController));
+  app.use("/api/users", configureUserRoutes(userController));
+  app.use("/api/menu", configureMenuRoutes(menuController));
+  app.use("/api/mesas", configureMesasRoutes(mesasController, pedidosController));
+  app.use("/api/pedidos", configurePedidosRoutes(pedidosController));
+  app.use("/api/reservas", configureReservasRoutes(reservasController));
 
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor RestoMaster escuchando en el puerto ${PORT}`);
-});
+  app.use(errorHandler);
+
+  const PORT = process.env.PORT || 4000;
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor RestoMaster escuchando en el puerto ${PORT}`);
+  });
+};
+
+startServer();

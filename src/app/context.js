@@ -8,20 +8,18 @@ import { MesasService } from "../services/MesasService.js";
 import { PedidosService } from "../services/PedidosService.js";
 import { ReservasService } from "../services/ReservasService.js";
 import { UserService } from "../services/UserService.js";
+import { MenuRepository } from "../repositories/MenuRepository.js";
+import { MesasRepository } from "../repositories/MesasRepository.js";
+import { PedidosRepository } from "../repositories/PedidosRepository.js";
+import { ReservasRepository } from "../repositories/ReservasRepository.js";
+import { UserRepository } from "../repositories/UserRepository.js";
 
-/*
- * buildAppContext ensambla la cadena de dependencias:
- * Repository → Service → Controller
- *
- * Los repositorios son stubs en memoria. En la Iteración 3 serán
- * reemplazados por implementaciones reales con Mongoose.
- */
 export const buildAppContext = () => {
-  const userRepository = crearRepositorioEnMemoria();
-  const menuRepository = crearRepositorioEnMemoria();
-  const mesasRepository = crearRepositorioEnMemoria();
-  const pedidosRepository = crearRepositorioEnMemoria();
-  const reservasRepository = crearRepositorioEnMemoria();
+  const userRepository = new UserRepository();
+  const menuRepository = new MenuRepository();
+  const mesasRepository = new MesasRepository();
+  const pedidosRepository = new PedidosRepository();
+  const reservasRepository = new ReservasRepository();
 
   const userService = new UserService(userRepository);
   const menuService = new MenuService(menuRepository);
@@ -37,24 +35,3 @@ export const buildAppContext = () => {
     reservasController: new ReservasController(reservasService),
   };
 };
-
-const crearRepositorioEnMemoria = () => ({
-  findAll: async () => [],
-  findById: async () => null,
-  findByEmail: async () => null,
-  create: async (datos) => ({ _id: "stub-id", ...datos }),
-  update: async () => null,
-  delete: async () => null,
-  findAndUpdate: async () => null,
-  findAndDelete: async () => null,
-  findByIdAndRestaurante: async () => null,
-  findByNumeroAndRestaurante: async () => null,
-  findByNombreAndRestaurante: async () => null,
-  findByMesaAndRestaurante: async () => null,
-  findActivos: async () => [],
-  addItems: async () => null,
-  updateEstado: async () => null,
-  updateItemEstado: async () => null,
-  existeReservaEnMesa: async () => null,
-  findAvailableTables: async () => [],
-});

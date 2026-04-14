@@ -1,4 +1,4 @@
-# RestoMaster — Iteración 2: Exposición de APIs, Servicios y DTOs (+ Bonus: Auth JWT)
+# RestoMaster — Iteraciones 1, 2 y 3 (+ Bonus: Auth JWT)
 
 ## 🎯 Objetivo de esta iteración
 
@@ -200,4 +200,73 @@ cp .env.example .env
 PORT=4000
 JWT_SECRET=tu_secreto_super_seguro_aqui
 NODE_ENV=development
+DB_URI=mongodb+srv://usuario:password@cluster.mongodb.net/restomaster
 ```
+
+---
+
+## 🗄️ Iteración 3: Persistencia de Datos
+
+### Nuevos archivos
+
+```
+src/
+├── schemas/
+│   ├── MesaSchema.js         → Mongoose Schema + Model para Mesa
+│   ├── ProductoSchema.js     → Mongoose Schema + Model para Producto
+│   ├── ComandaSchema.js      → Mongoose Schema + Model para Comanda
+│   ├── ItemComandaSchema.js  → Subdocumento embebido en Comanda
+│   ├── ReservaSchema.js      → Mongoose Schema + Model para Reserva
+│   └── UsuarioSchema.js      → Mongoose Schema + Model para Usuario
+├── repositories/
+│   ├── MesasRepository.js
+│   ├── MenuRepository.js
+│   ├── PedidosRepository.js
+│   ├── ReservasRepository.js
+│   └── UserRepository.js
+└── app/
+    └── db.js                 → Conexión a MongoDB con Mongoose
+```
+
+### `loadClass()`: el puente entre dominio y BD
+
+Cada schema usa `loadClass()` para vincular la clase de dominio de la Iteración 1. De esta forma, los documentos que devuelve MongoDB son instancias que también tienen los métodos de la clase (ej: `calcularTotal()`, `cerrarComanda()`):
+
+```js
+ComandaSchema.loadClass(Comanda);
+
+// Ahora un documento de BD tiene los métodos del dominio:
+const comanda = await ComandaModel.findById(id);
+const total = comanda.calcularTotal(); // ✅ funciona
+```
+
+### Subdocumentos vs. Referencias
+
+| Entidad | Estrategia | Razón |
+|---------|------------|--------|
+| `ItemComanda` dentro de `Comanda` | **Subdocumento embebido** | Los ítems no existen sin la comanda, siempre se consultan juntos |
+| `mesa` en `Comanda` | **Referencia** (`ObjectId`) | La mesa existe independientemente, se popula cuando es necesario |
+| `mesaReservada` en `Reserva` | **Referencia** (`ObjectId`) | Ídem |
+| `mozo` en `Comanda` | **Referencia** (`ObjectId`) | El usuario existe independientemente |
+
+### Soft Delete en Reservas
+
+Las reservas no se eliminan físicamente. En cambio se setea el campo `deletedAt` con la fecha de eliminación. Todas las consultas usan el filtro base `{ deletedAt: null }` automáticamente:
+
+```js
+// En lugar de borrar:
+await ReservaModel.findByIdAndDelete(id)
+
+// Se marca como eliminada:
+await ReservaModel.findOneAndUpdate({ _id: id }, { deletedAt: new Date() })
+```
+
+### Configuración
+
+Agregar `DB_URI` al archivo `.env`:
+
+```
+DB_URI=mongodb+srv://usuario:password@cluster.mongodb.net/restomaster
+```
+
+El servidor no arranca si la conexión a MongoDB falla.
