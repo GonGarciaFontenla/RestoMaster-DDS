@@ -19,7 +19,9 @@ export class UserRepository {
   }
 
   async update(id, updateData) {
-    return await UsuarioModel.findByIdAndUpdate(id, updateData, { new: true }).select("-password");
+    return await UsuarioModel.findByIdAndUpdate(id, updateData, {
+      new: true,
+    }).select("-password");
   }
 
   async delete(id) {
