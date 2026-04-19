@@ -12,20 +12,10 @@ export const UsuarioSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
-  password: {
-    type: String,
-    required: true,
-  },
   tipo: {
     type: String,
     required: true,
     enum: Object.values(TipoUsuario),
-  },
-  restauranteId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Restaurante",
-    required: true,
-    index: true,
   },
   fechaRegistro: {
     type: Date,

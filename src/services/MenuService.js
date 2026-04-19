@@ -6,9 +6,8 @@ export default class MenuService {
   }
 
   async createPlate(platoData) {
-    const platoExistente = await this.menuRepository.findByNombreAndRestaurante(
+    const platoExistente = await this.menuRepository.findByNombre(
       platoData.nombre,
-      platoData.restauranteId,
     );
 
     if (platoExistente) {
@@ -18,8 +17,8 @@ export default class MenuService {
     return await this.menuRepository.create(platoData);
   }
 
-  async retrivePlates(queryParametros = {}, restauranteId) {
-    const filtros = { restauranteId };
+  async retrivePlates(queryParametros = {}) {
+    const filtros = {};
 
     if (queryParametros.categoria) filtros.categoria = queryParametros.categoria;
     if (queryParametros.nombre) filtros.nombre = queryParametros.nombre;
@@ -30,13 +29,13 @@ export default class MenuService {
     return await this.menuRepository.findAll(filtros);
   }
 
-  async modifyPlate(idPlato, datosNuevos, restauranteId) {
-    const platoExistente = await this.menuRepository.findByIdAndRestaurante(idPlato, restauranteId);
+  async modifyPlate(idPlato, datosNuevos) {
+    const platoExistente = await this.menuRepository.findById(idPlato);
 
     if (!platoExistente) {
       throw new NonExistentResource(`El plato con id: ${idPlato}`);
     }
 
-    return await this.menuRepository.findAndUpdate(idPlato, datosNuevos, restauranteId);
+    return await this.menuRepository.findAndUpdate(idPlato, datosNuevos);
   }
 }

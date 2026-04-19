@@ -4,12 +4,6 @@ import { Ubicacion } from "../domain/enums/Ubicacion.js";
 import Mesa from "../domain/Mesa.js";
 
 export const MesaSchema = new mongoose.Schema({
-  restauranteId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Restaurante",
-    required: true,
-    index: true,
-  },
   numero: {
     type: Number,
     required: true,
@@ -39,6 +33,6 @@ export const MesaSchema = new mongoose.Schema({
  */
 MesaSchema.loadClass(Mesa);
 
-MesaSchema.index({ restauranteId: 1, numero: 1 }, { unique: true });
+MesaSchema.index({ numero: 1 }, { unique: true });
 
 export const MesaModel = mongoose.model("Mesa", MesaSchema);
