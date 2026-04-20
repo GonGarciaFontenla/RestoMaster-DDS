@@ -12,8 +12,8 @@ export class ReservasRepository {
     return { deletedAt: null };
   }
 
-  async findAll(restauranteId, filtros = {}) {
-    const query = { ...this.baseFilter(), restauranteId };
+  async findAll(filtros = {}) {
+    const query = { ...this.baseFilter() };
 
     if (filtros.estado) query.estado = filtros.estado;
 
@@ -34,8 +34,8 @@ export class ReservasRepository {
       .sort({ horario: -1 });
   }
 
-  async findById(id, restauranteId) {
-    return await ReservaModel.findOne({ _id: id, restauranteId, ...this.baseFilter() })
+  async findById(id) {
+    return await ReservaModel.findOne({ _id: id, ...this.baseFilter() })
       .populate("mesaReservada");
   }
 
@@ -44,23 +44,23 @@ export class ReservasRepository {
     return await nuevaReserva.save();
   }
 
-  async findAndUpdate(id, datosNuevos, restauranteId) {
+  async findAndUpdate(id, datosNuevos) {
     return await ReservaModel.findOneAndUpdate(
-      { _id: id, restauranteId, ...this.baseFilter() },
+      { _id: id, ...this.baseFilter() },
       datosNuevos,
       { new: true },
     ).populate("mesaReservada");
   }
 
-  async findAndDelete(id, restauranteId) {
+  async findAndDelete(id) {
     return await ReservaModel.findOneAndUpdate(
-      { _id: id, restauranteId, ...this.baseFilter() },
+      { _id: id, ...this.baseFilter() },
       { deletedAt: new Date() },
       { new: true },
     );
   }
 
-  async existeReservaEnMesa(mesaId, horario, restauranteId, excludeId = null) {
+  async existeReservaEnMesa(mesaId, horario, excludeId = null) {
     const horarioInicio = new Date(horario);
     horarioInicio.setMinutes(horarioInicio.getMinutes() - 30);
 
@@ -69,7 +69,6 @@ export class ReservasRepository {
 
     const query = {
       mesaReservada: mesaId,
-      restauranteId,
       estado: { $in: [EstadoReserva.PENDIENTE, EstadoReserva.CONFIRMADA] },
       horario: { $gte: horarioInicio, $lte: horarioFin },
       ...this.baseFilter(),
@@ -80,7 +79,7 @@ export class ReservasRepository {
     return await ReservaModel.findOne(query);
   }
 
-  async findAvailableTables(restauranteId, fecha, hora, cantidadComensales) {
+  async findAvailableTables(fecha, hora, cantidadComensales) {
     const [horas, minutos] = hora.split(":").map(Number);
     const horarioReserva = new Date(fecha);
     horarioReserva.setHours(horas, minutos, 0, 0);
@@ -92,7 +91,6 @@ export class ReservasRepository {
     horarioFin.setMinutes(horarioFin.getMinutes() + 30);
 
     const mesasOcupadas = await ReservaModel.find({
-      restauranteId,
       ...this.baseFilter(),
       horario: { $gte: horarioInicio, $lte: horarioFin },
       estado: { $in: [EstadoReserva.PENDIENTE, EstadoReserva.CONFIRMADA] },
@@ -101,7 +99,6 @@ export class ReservasRepository {
     const idsOcupadas = mesasOcupadas.map((r) => r.mesaReservada.toString());
 
     return await MesaModel.find({
-      restauranteId,
       capacidad: { $gte: cantidadComensales },
       _id: { $nin: idsOcupadas },
       estado: EstadoMesa.LIBRE,

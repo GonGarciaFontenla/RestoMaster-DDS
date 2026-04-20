@@ -25,7 +25,6 @@ export class UserService {
       {
         id: user._id,
         tipo: user.tipo,
-        restauranteId: user.restauranteId,
       },
       process.env.JWT_SECRET,
       { expiresIn: "24h" },

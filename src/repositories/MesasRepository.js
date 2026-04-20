@@ -1,16 +1,16 @@
 import { MesaModel } from "../schemas/MesaSchema.js";
 
 export class MesasRepository {
-  async findAll(restauranteId) {
-    return await MesaModel.find({ restauranteId });
+  async findAll() {
+    return await MesaModel.find({});
   }
 
-  async findByIdAndRestaurante(id, restauranteId) {
-    return await MesaModel.findOne({ _id: id, restauranteId });
+  async findById(id) {
+    return await MesaModel.findOne({ _id: id });
   }
 
-  async findByNumeroAndRestaurante(numero, restauranteId) {
-    return await MesaModel.findOne({ numero, restauranteId });
+  async findByNumero(numero) {
+    return await MesaModel.findOne({ numero });
   }
 
   async create(datosMesa) {
@@ -18,9 +18,9 @@ export class MesasRepository {
     return await nuevaMesa.save();
   }
 
-  async findAndUpdate(id, datosNuevos, restauranteId) {
+  async findAndUpdate(id, datosNuevos) {
     return await MesaModel.findOneAndUpdate(
-      { _id: id, restauranteId },
+      { _id: id },
       datosNuevos,
       { new: true },
     );

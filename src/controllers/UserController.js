@@ -42,10 +42,7 @@ export default class UserController {
 
   async createUser(req, res, next) {
     try {
-      const newUser = await this.userService.register({
-        ...req.body,
-        restauranteId: req.user.restauranteId,
-      });
+      const newUser = await this.userService.register(req.body);
 
       return res.status(201).json({
         estado: "success",

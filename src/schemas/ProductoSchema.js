@@ -3,12 +3,6 @@ import { CategoriaPlato } from "../domain/enums/CategoriaPlato.js";
 import Producto from "../domain/Producto.js";
 
 export const ProductoSchema = new mongoose.Schema({
-  restauranteId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Restaurante",
-    required: true,
-    index: true,
-  },
   nombre: {
     type: String,
     required: true,

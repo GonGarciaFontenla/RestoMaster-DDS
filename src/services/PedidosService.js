@@ -10,22 +10,20 @@ export class PedidosService {
     this.mesasRepository = mesasRepository;
   }
 
-  async crearPedido({ mesaId, mozoId, restauranteId }) {
-    const mesa = await this.mesasRepository.findByIdAndRestaurante(mesaId, restauranteId);
+  async crearPedido({ mesaId, mozoId }) {
+    const mesa = await this.mesasRepository.findById(mesaId);
     if (!mesa) {
       throw new NonExistentResource(`La mesa con id: ${mesaId}`);
     }
 
-    const comandaExistente = await this.pedidosRepository.findByMesaAndRestaurante(
+    const comandaExistente = await this.pedidosRepository.findByMesa(
       mesaId,
-      restauranteId,
     );
     if (comandaExistente) {
       throw new ExistentResource(`Una comanda abierta para la mesa ${mesa.numero}`);
     }
 
     return await this.pedidosRepository.create({
-      restauranteId,
       mozo: mozoId,
       mesa: mesaId,
       estado: EstadoComanda.ABIERTA,
@@ -34,20 +32,20 @@ export class PedidosService {
     });
   }
 
-  async getPedidosActivos(restauranteId) {
-    return await this.pedidosRepository.findActivos(restauranteId);
+  async getPedidosActivos() {
+    return await this.pedidosRepository.findActivos();
   }
 
-  async getPedidoPorMesa(mesaId, restauranteId) {
-    const comanda = await this.pedidosRepository.findByMesaAndRestaurante(mesaId, restauranteId);
+  async getPedidoPorMesa(mesaId) {
+    const comanda = await this.pedidosRepository.findByMesa(mesaId);
     if (!comanda) {
       throw new NonExistentResource(`Una comanda abierta para la mesa con id: ${mesaId}`);
     }
     return comanda;
   }
 
-  async agregarItems(idPedido, items, restauranteId) {
-    const comanda = await this.pedidosRepository.findByIdAndRestaurante(idPedido, restauranteId);
+  async agregarItems(idPedido, items) {
+    const comanda = await this.pedidosRepository.findById(idPedido);
     if (!comanda) {
       throw new NonExistentResource(`El pedido con id: ${idPedido}`);
     }
@@ -57,9 +55,8 @@ export class PedidosService {
 
     const itemsConPrecio = await Promise.all(
       items.map(async (item) => {
-        const producto = await this.menuRepository.findByIdAndRestaurante(
+        const producto = await this.menuRepository.findById(
           item.producto,
-          restauranteId,
         );
         if (!producto) {
           throw new NonExistentResource(`El producto con id: ${item.producto}`);
@@ -73,11 +70,11 @@ export class PedidosService {
       }),
     );
 
-    return await this.pedidosRepository.addItems(idPedido, restauranteId, itemsConPrecio);
+    return await this.pedidosRepository.addItems(idPedido, itemsConPrecio);
   }
 
-  async actualizarEstado(idPedido, body, restauranteId) {
-    const comanda = await this.pedidosRepository.findByIdAndRestaurante(idPedido, restauranteId);
+  async actualizarEstado(idPedido, body) {
+    const comanda = await this.pedidosRepository.findById(idPedido);
     if (!comanda) {
       throw new NonExistentResource(`El pedido con id: ${idPedido}`);
     }
@@ -85,7 +82,6 @@ export class PedidosService {
     if (body.itemId && body.estadoItem) {
       return await this.pedidosRepository.updateItemEstado(
         idPedido,
-        restauranteId,
         body.itemId,
         body.estadoItem,
       );
@@ -100,6 +96,6 @@ export class PedidosService {
       }
     }
 
-    return await this.pedidosRepository.updateEstado(idPedido, restauranteId, body.estado);
+    return await this.pedidosRepository.updateEstado(idPedido, body.estado);
   }
 }

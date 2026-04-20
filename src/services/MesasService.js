@@ -5,30 +5,29 @@ export class MesasService {
     this.mesasRepository = mesasRepository;
   }
 
-  async getMesas(restauranteId) {
-    return await this.mesasRepository.findAll(restauranteId);
+  async getMesas() {
+    return await this.mesasRepository.findAll();
   }
 
-  async createTable(restauranteId, datos) {
-    const mesaExistente = await this.mesasRepository.findByNumeroAndRestaurante(
+  async createTable(datos) {
+    const mesaExistente = await this.mesasRepository.findByNumero(
       datos.numero,
-      restauranteId,
     );
 
     if (mesaExistente) {
       throw new ExistentResource(`La mesa número ${datos.numero}`);
     }
 
-    return await this.mesasRepository.create({ ...datos, restauranteId });
+    return await this.mesasRepository.create(datos);
   }
 
-  async actualizarMesa(idMesa, datosNuevos, restauranteId) {
-    const mesa = await this.mesasRepository.findByIdAndRestaurante(idMesa, restauranteId);
+  async actualizarMesa(idMesa, datosNuevos) {
+    const mesa = await this.mesasRepository.findById(idMesa);
 
     if (!mesa) {
       throw new NonExistentResource(`La mesa con id: ${idMesa}`);
     }
 
-    return await this.mesasRepository.findAndUpdate(idMesa, datosNuevos, restauranteId);
+    return await this.mesasRepository.findAndUpdate(idMesa, datosNuevos);
   }
 }

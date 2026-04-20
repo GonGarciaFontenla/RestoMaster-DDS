@@ -1,15 +1,14 @@
 import { ProductoModel } from "../schemas/ProductoSchema.js";
 
 export class MenuRepository {
-  async findByNombreAndRestaurante(nombre, restauranteId) {
+  async findByNombre(nombre) {
     return await ProductoModel.findOne({
       nombre: { $regex: new RegExp(`^${nombre}$`, "i") },
-      restauranteId,
     });
   }
 
-  async findByIdAndRestaurante(id, restauranteId) {
-    return await ProductoModel.findOne({ _id: id, restauranteId });
+  async findById(id) {
+    return await ProductoModel.findOne({ _id: id });
   }
 
   async create(platoData) {
@@ -21,9 +20,9 @@ export class MenuRepository {
     return await ProductoModel.find(filtros);
   }
 
-  async findAndUpdate(id, datosNuevos, restauranteId) {
+  async findAndUpdate(id, datosNuevos) {
     return await ProductoModel.findOneAndUpdate(
-      { _id: id, restauranteId },
+      { _id: id },
       datosNuevos,
       { new: true },
     );

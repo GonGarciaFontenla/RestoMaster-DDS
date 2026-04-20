@@ -9,7 +9,6 @@ export const authenticate = (req, res, next) => {
 
   try {
     req.user = jwt.verify(token, process.env.JWT_SECRET);
-    req.restauranteId = req.user.restauranteId;
     next();
   } catch {
     return res.status(403).json({ estado: "error", mensaje: "Token inválido o expirado" });

@@ -21,12 +21,6 @@ export const UsuarioSchema = new mongoose.Schema({
     required: true,
     enum: Object.values(TipoUsuario),
   },
-  restauranteId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Restaurante",
-    required: true,
-    index: true,
-  },
   fechaRegistro: {
     type: Date,
     default: Date.now,

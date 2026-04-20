@@ -7,17 +7,16 @@ export class PedidosRepository {
     return await comanda.save();
   }
 
-  async findActivos(restauranteId) {
-    return await ComandaModel.find({ restauranteId, estado: EstadoComanda.ABIERTA })
+  async findActivos() {
+    return await ComandaModel.find({ estado: EstadoComanda.ABIERTA })
       .populate("mozo", "name")
       .populate("mesa", "numero ubicacion")
       .populate("items.producto", "nombre precio");
   }
 
-  async findByMesaAndRestaurante(mesaId, restauranteId) {
+  async findByMesa(mesaId) {
     return await ComandaModel.findOne({
       mesa: mesaId,
-      restauranteId,
       estado: EstadoComanda.ABIERTA,
     })
       .populate("mozo", "name")
@@ -25,29 +24,29 @@ export class PedidosRepository {
       .populate("items.producto", "nombre precio");
   }
 
-  async findByIdAndRestaurante(id, restauranteId) {
-    return await ComandaModel.findOne({ _id: id, restauranteId });
+  async findById(id) {
+    return await ComandaModel.findOne({ _id: id });
   }
 
-  async addItems(id, restauranteId, items) {
+  async addItems(id, items) {
     return await ComandaModel.findOneAndUpdate(
-      { _id: id, restauranteId },
+      { _id: id },
       { $push: { items: { $each: items } } },
       { new: true },
     );
   }
 
-  async updateEstado(id, restauranteId, estado) {
+  async updateEstado(id, estado) {
     return await ComandaModel.findOneAndUpdate(
-      { _id: id, restauranteId },
+      { _id: id },
       { estado },
       { new: true },
     );
   }
 
-  async updateItemEstado(id, restauranteId, itemId, estadoItem) {
+  async updateItemEstado(id, itemId, estadoItem) {
     return await ComandaModel.findOneAndUpdate(
-      { _id: id, restauranteId, "items._id": itemId },
+      { _id: id, "items._id": itemId },
       { $set: { "items.$.estado": estadoItem } },
       { new: true },
     );

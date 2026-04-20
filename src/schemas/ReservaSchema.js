@@ -3,12 +3,6 @@ import { EstadoReserva } from "../domain/enums/EstadoReserva.js";
 import Reserva from "../domain/Reserva.js";
 
 export const ReservaSchema = new mongoose.Schema({
-  restauranteId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Restaurante",
-    required: true,
-    index: true,
-  },
   mesaReservada: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Mesa",
