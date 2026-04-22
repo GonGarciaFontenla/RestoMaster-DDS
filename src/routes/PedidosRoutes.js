@@ -1,35 +1,38 @@
 import { Router } from "express";
-import { authenticate, requireRole } from "../middlewares/auth.js";
-import { TipoUsuario } from "../domain/enums/TipoUsuario.js";
+import { z } from "zod";
+import { validateSchema } from "../middlewares/validator.js";
+import { actualizarEstadoSchema } from "../validations/actualizarEstadoSchema.js";
+import { crearComandaSchema, disponibilidadSchema } from "../validations/crearComandaSchema.js";
+import { itemComandaSchema } from "../validations/itemComandaSchema.js";
 
 export const configurePedidosRoutes = (pedidosController) => {
   const router = Router();
 
+  // Fix #4: se agrega crearComandaSchema para validar mesa y mozoId,
+  // evitando que CastErrors de Mongoose lleguen con mensajes poco claros.
   router.post(
     "/",
-    authenticate,
-    requireRole(TipoUsuario.ADMIN, TipoUsuario.MOZO),
+    validateSchema(crearComandaSchema),
     pedidosController.crearPedido.bind(pedidosController),
   );
 
-  router.get(
-    "/active",
-    authenticate,
-    requireRole(TipoUsuario.ADMIN, TipoUsuario.MOZO, TipoUsuario.COCINERO),
-    pedidosController.getPedidosActivos.bind(pedidosController),
-  );
+  // IMPORTANTE: /active ANTES que /:id para evitar que Express
+  // interprete "active" como un parámetro de ID dinámico.
+  router.get("/active", pedidosController.getPedidosActivos.bind(pedidosController));
 
   router.patch(
     "/:id/items",
-    authenticate,
-    requireRole(TipoUsuario.ADMIN, TipoUsuario.MOZO),
+    validateSchema(
+      z.object({
+        items: itemComandaSchema.array().min(1, "Se debe enviar al menos un ítem"),
+      })
+    ),
     pedidosController.agregarItems.bind(pedidosController),
   );
 
   router.patch(
     "/:id/status",
-    authenticate,
-    requireRole(TipoUsuario.ADMIN, TipoUsuario.MOZO, TipoUsuario.COCINERO),
+    validateSchema(actualizarEstadoSchema),
     pedidosController.actualizarEstado.bind(pedidosController),
   );
 

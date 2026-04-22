@@ -1,9 +1,9 @@
 import { Router } from "express";
-import { authenticate } from "../middlewares/auth.js";
+// Fix: doble import del mismo módulo fusionado en una sola declaración
+import { authenticate, requireRole } from "../middlewares/auth.js";
 import { validateSchema } from "../middlewares/validator.js";
 import { usuarioSchema } from "../validations/userSchema.js";
 import { TipoUsuario } from "../domain/enums/TipoUsuario.js";
-import { requireRole } from "../middlewares/auth.js";
 
 export const configureAuthRoutes = (userController) => {
   const router = Router();

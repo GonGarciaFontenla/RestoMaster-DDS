@@ -40,6 +40,11 @@ export default class MesasController {
         req.body,
       );
 
+      // Fix #5: si la mesa fue borrada entre el findById y el findAndUpdate
+      // (race condition), mesaActualizada puede ser null → TypeError en MesasREST.
+      if (!mesaActualizada) {
+        return res.status(404).json({ estado: "error", mensaje: "Mesa no encontrada" });
+      }
       return res.status(200).json({
         estado: "success",
         mensaje: "Mesa actualizada exitosamente",

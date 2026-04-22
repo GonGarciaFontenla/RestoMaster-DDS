@@ -20,3 +20,26 @@ export const validateSchema = (schema) => {
     next();
   };
 };
+
+export const validateQuery = (schema) => {
+  return (req, res, next) => {
+    const result = schema.safeParse(req.query);
+
+    if (!result.success) {
+      const erroresFormateados = result.error.issues.map((issue) => ({
+        campo: issue.path.join("."),
+        mensaje: issue.message,
+      }));
+
+      return res.status(400).json({
+        estado: "error",
+        tipo: "ErrorDeValidacion",
+        mensaje: "Los parámetros de consulta no son válidos",
+        detalles: erroresFormateados,
+      });
+    }
+
+    req.query = result.data;
+    next();
+  };
+};

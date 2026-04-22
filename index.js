@@ -32,6 +32,16 @@ const startServer = async () => {
   app.use("/api/pedidos", configurePedidosRoutes(pedidosController));
   app.use("/api/reservas", configureReservasRoutes(reservasController));
 
+  // Fix #14: el handler 404 debe ir ANTES del errorHandler para que las rutas
+  // no encontradas retornen JSON y no el HTML por defecto de Express.
+  app.use((req, res) => {
+    res.status(404).json({
+      estado: "error",
+      tipo: "NotFound",
+      mensaje: `La ruta ${req.method} ${req.originalUrl} no existe`,
+    });
+  });
+
   app.use(errorHandler);
 
   const PORT = process.env.PORT || 4000;

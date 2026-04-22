@@ -1,4 +1,7 @@
+// Fix #1: se restaura el bloque try/catch que quedó roto al eliminar el req.restauranteId.
+// El catch huérfano causaba un SyntaxError que impedía que el servidor arranque.
 import { ReservaREST } from "../dtos/ReservaDTO.js";
+import { MesasREST } from "../dtos/MesasDTO.js";
 
 export default class ReservasController {
   constructor(reservasService) {
@@ -6,9 +9,8 @@ export default class ReservasController {
   }
 
   async obtenerReservas(req, res, next) {
-      const reservas = await this.reservasService.obtenerReservas(
-        req.query,
-      );
+    try {
+      const reservas = await this.reservasService.obtenerReservas(req.query);
       return res.status(200).json({
         estado: "success",
         mensaje: "Reservas devueltas exitosamente",
@@ -21,9 +23,7 @@ export default class ReservasController {
 
   async obtenerReservaById(req, res, next) {
     try {
-      const reserva = await this.reservasService.obtenerReservaById(
-        req.params.id,
-      );
+      const reserva = await this.reservasService.obtenerReservaById(req.params.id);
       return res.status(200).json({
         estado: "success",
         mensaje: "Reserva devuelta exitosamente",
@@ -49,10 +49,7 @@ export default class ReservasController {
 
   async actualizarReserva(req, res, next) {
     try {
-      const reserva = await this.reservasService.actualizarReserva(
-        req.params.id,
-        req.body,
-      );
+      const reserva = await this.reservasService.actualizarReserva(req.params.id, req.body);
       return res.status(200).json({
         estado: "success",
         mensaje: "Reserva actualizada exitosamente",
@@ -69,12 +66,16 @@ export default class ReservasController {
       const mesasDisponibles = await this.reservasService.obtenerDisponibilidad(
         fecha,
         hora,
-        parseInt(comensales),
+        // Fix #2: parseInt puede retornar NaN si comensales no existe o es inválido.
+        // La validación via validateQuery (reservaDisponibilidadSchema) en la ruta
+        // previene que este valor llegue como undefined o string no numérico.
+        parseInt(comensales, 10),
       );
       return res.status(200).json({
         estado: "success",
         mensaje: "Mesas disponibles obtenidas exitosamente",
-        mesasDisponibles,
+        // Fix #15: se aplica MesasREST para consistencia con el resto de endpoints de mesas
+        mesasDisponibles: mesasDisponibles.map((m) => MesasREST(m)),
       });
     } catch (err) {
       next(err);
@@ -83,9 +84,7 @@ export default class ReservasController {
 
   async confirmarReserva(req, res, next) {
     try {
-      const reserva = await this.reservasService.confirmarReserva(
-        req.params.id,
-      );
+      const reserva = await this.reservasService.confirmarReserva(req.params.id);
       return res.status(200).json({
         estado: "success",
         mensaje: "Reserva confirmada exitosamente",
@@ -98,9 +97,7 @@ export default class ReservasController {
 
   async cancelarReserva(req, res, next) {
     try {
-      const reserva = await this.reservasService.cancelarReserva(
-        req.params.id,
-      );
+      const reserva = await this.reservasService.cancelarReserva(req.params.id);
       return res.status(200).json({
         estado: "success",
         mensaje: "Reserva cancelada exitosamente",

@@ -1,73 +1,48 @@
 import { Router } from "express";
-import { authenticate, requireRole } from "../middlewares/auth.js";
 import { validateSchema } from "../middlewares/validator.js";
+import { validateQuery } from "../middlewares/validator.js";
 import { reservaSchema } from "../validations/reservaSchema.js";
-import { TipoUsuario } from "../domain/enums/TipoUsuario.js";
+import { asistenciaSchema } from "../validations/asistenciaSchema.js";
+import { disponibilidadSchema } from "../validations/crearComandaSchema.js";
 
 export const configureReservasRoutes = (reservasController) => {
   const router = Router();
 
-  router.get(
-    "/",
-    authenticate,
-    requireRole(TipoUsuario.ADMIN, TipoUsuario.MOZO),
-    reservasController.obtenerReservas.bind(reservasController),
-  );
+  router.get("/", reservasController.obtenerReservas.bind(reservasController));
 
+  // Fix #2: se validan os query params antes de llegar al controller
+  // para que parseInt nunca reciba undefined y devuelva NaN.
   router.get(
     "/disponibilidad",
-    authenticate,
+    validateQuery(disponibilidadSchema),
     reservasController.obtenerDisponibilidad.bind(reservasController),
   );
 
   router.post(
     "/",
-    authenticate,
     validateSchema(reservaSchema),
     reservasController.crearReserva.bind(reservasController),
   );
 
-  router.get(
-    "/:id",
-    authenticate,
-    requireRole(TipoUsuario.ADMIN, TipoUsuario.MOZO),
-    reservasController.obtenerReservaById.bind(reservasController),
-  );
+  router.get("/:id", reservasController.obtenerReservaById.bind(reservasController));
 
   router.put(
     "/:id",
-    authenticate,
-    requireRole(TipoUsuario.ADMIN, TipoUsuario.MOZO),
     validateSchema(reservaSchema.partial()),
     reservasController.actualizarReserva.bind(reservasController),
   );
 
-  router.put(
-    "/:id/confirmar",
-    authenticate,
-    requireRole(TipoUsuario.ADMIN, TipoUsuario.MOZO),
-    reservasController.confirmarReserva.bind(reservasController),
-  );
+  router.put("/:id/confirmar", reservasController.confirmarReserva.bind(reservasController));
 
-  router.put(
-    "/:id/cancelar",
-    authenticate,
-    reservasController.cancelarReserva.bind(reservasController),
-  );
+  router.put("/:id/cancelar", reservasController.cancelarReserva.bind(reservasController));
 
   router.put(
     "/:id/asistencia",
-    authenticate,
-    requireRole(TipoUsuario.ADMIN, TipoUsuario.MOZO),
+    validateSchema(asistenciaSchema),
     reservasController.registrarAsistencia.bind(reservasController),
   );
 
-  router.delete(
-    "/:id",
-    authenticate,
-    requireRole(TipoUsuario.ADMIN),
-    reservasController.eliminarReserva.bind(reservasController),
-  );
+  router.delete("/:id", reservasController.eliminarReserva.bind(reservasController));
 
   return router;
 };

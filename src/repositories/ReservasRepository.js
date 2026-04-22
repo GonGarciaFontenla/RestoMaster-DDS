@@ -98,10 +98,12 @@ export class ReservasRepository {
 
     const idsOcupadas = mesasOcupadas.map((r) => r.mesaReservada.toString());
 
+    // Fix #13: se elimina el filtro por EstadoMesa.LIBRE porque una mesa OCUPADA
+    // ahora puede no estarlo en el horario futuro de la reserva consultada.
+    // La disponibilidad ya se garantiza filtrando por reservas en conflicto de horario.
     return await MesaModel.find({
       capacidad: { $gte: cantidadComensales },
       _id: { $nin: idsOcupadas },
-      estado: EstadoMesa.LIBRE,
     }).sort({ capacidad: 1 });
   }
 }
