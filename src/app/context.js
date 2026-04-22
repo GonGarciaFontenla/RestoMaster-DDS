@@ -3,11 +3,12 @@ import MesasController from "../controllers/MesasController.js";
 import PedidosController from "../controllers/PedidosController.js";
 import ReservasController from "../controllers/ReservasController.js";
 import UserController from "../controllers/UserController.js";
-import MenuService from "../services/MenuService.js";
+import { MenuService } from "../services/MenuService.js";
 import { MesasService } from "../services/MesasService.js";
 import { PedidosService } from "../services/PedidosService.js";
 import { ReservasService } from "../services/ReservasService.js";
 import { UserService } from "../services/UserService.js";
+import { randomUUID } from "crypto";
 
 /*
  * buildAppContext ensambla la cadena de dependencias:
@@ -42,7 +43,7 @@ const crearRepositorioEnMemoria = () => ({
   findAll: async () => [],
   findById: async () => null,
   findByEmail: async () => null,
-  create: async (datos) => ({ _id: "stub-id", ...datos }),
+  create: async (datos) => ({ _id: randomUUID(), ...datos }), // Fix #16: ID único por invocación
   update: async () => null,
   delete: async () => null,
   findAndUpdate: async () => null,

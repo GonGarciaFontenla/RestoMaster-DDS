@@ -23,7 +23,7 @@ export default class MenuController {
   async getMenu(req, res, next) {
     try {
       const restauranteId = req.restauranteId;
-      const platos = await this.menuService.retrivePlates(req.query, restauranteId);
+      const platos = await this.menuService.retrievePlates(req.query, restauranteId);
 
       return res.status(200).json({
         estado: "success",

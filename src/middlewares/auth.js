@@ -18,7 +18,8 @@ export const authenticate = (req, res, next) => {
 
 export const requireRole = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.tipo)) {
+    // Fix #1: guarda defensiva por si requireRole se usa sin authenticate previo
+    if (!req.user || !roles.includes(req.user.tipo)) {
       return res.status(403).json({ estado: "error", mensaje: "No autorizado" });
     }
     next();

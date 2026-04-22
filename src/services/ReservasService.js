@@ -1,4 +1,4 @@
-import { ExistentResource, NonExistentResource } from "../errors/GeneralErrors.js";
+import { ExistentResource, NotFoundError } from "../errors/GeneralErrors.js";
 import BusinessRuleError from "../errors/BusinessError.js";
 import { EstadoReserva } from "../domain/enums/EstadoReserva.js";
 
@@ -15,7 +15,7 @@ export class ReservasService {
   async obtenerReservaById(id, restauranteId) {
     const reserva = await this.reservasRepository.findById(id, restauranteId);
     if (!reserva) {
-      throw new NonExistentResource(`La reserva con id: ${id}`);
+      throw new NotFoundError(`La reserva con id: ${id}`);
     }
     return reserva;
   }
@@ -26,7 +26,7 @@ export class ReservasService {
       restauranteId,
     );
     if (!mesa) {
-      throw new NonExistentResource("La mesa especificada");
+      throw new NotFoundError("La mesa especificada");
     }
 
     if (datos.cantidadComensales > mesa.capacidad) {
@@ -59,7 +59,7 @@ export class ReservasService {
   async actualizarReserva(id, restauranteId, datosNuevos) {
     const reserva = await this.reservasRepository.findById(id, restauranteId);
     if (!reserva) {
-      throw new NonExistentResource(`La reserva con id: ${id}`);
+      throw new NotFoundError(`La reserva con id: ${id}`);
     }
 
     if (datosNuevos.mesaReservada && datosNuevos.mesaReservada !== reserva.mesaReservada._id.toString()) {
@@ -68,7 +68,7 @@ export class ReservasService {
         restauranteId,
       );
       if (!nuevaMesa) {
-        throw new NonExistentResource("La nueva mesa especificada");
+        throw new NotFoundError("La nueva mesa especificada");
       }
 
       const cantidadComensales = datosNuevos.cantidadComensales || reserva.cantidadComensales;
@@ -90,7 +90,12 @@ export class ReservasService {
       }
     }
 
-    if (datosNuevos.horario && datosNuevos.horario !== reserva.horario) {
+    // Fix #15: se comparan los timestamps para evitar falsos positivos cuando
+    // datosNuevos.horario es un string ISO y reserva.horario es un objeto Date.
+    if (
+      datosNuevos.horario &&
+      new Date(datosNuevos.horario).getTime() !== new Date(reserva.horario).getTime()
+    ) {
       if (new Date(datosNuevos.horario) < new Date()) {
         throw new BusinessRuleError("No se puede cambiar a un horario en el pasado");
       }
@@ -127,7 +132,7 @@ export class ReservasService {
   async confirmarReserva(id, restauranteId) {
     const reserva = await this.reservasRepository.findById(id, restauranteId);
     if (!reserva) {
-      throw new NonExistentResource(`La reserva con id: ${id}`);
+      throw new NotFoundError(`La reserva con id: ${id}`);
     }
     if (reserva.estado !== EstadoReserva.PENDIENTE) {
       throw new BusinessRuleError(`No se puede confirmar una reserva en estado ${reserva.estado}`);
@@ -142,9 +147,11 @@ export class ReservasService {
   async cancelarReserva(id, restauranteId) {
     const reserva = await this.reservasRepository.findById(id, restauranteId);
     if (!reserva) {
-      throw new NonExistentResource(`La reserva con id: ${id}`);
+      throw new NotFoundError(`La reserva con id: ${id}`);
     }
-    if (reserva.horario < new Date()) {
+    // Fix #14: se convierte a Date explícitamente para evitar comparación
+    // incorrecta entre string ISO (repositorio) y objeto Date (new Date()).
+    if (new Date(reserva.horario) < new Date()) {
       throw new BusinessRuleError("No se puede cancelar una reserva que ya pasó");
     }
     if (![EstadoReserva.PENDIENTE, EstadoReserva.CONFIRMADA].includes(reserva.estado)) {
@@ -162,7 +169,7 @@ export class ReservasService {
   async registrarAsistencia(id, restauranteId, estado) {
     const reserva = await this.reservasRepository.findById(id, restauranteId);
     if (!reserva) {
-      throw new NonExistentResource(`La reserva con id: ${id}`);
+      throw new NotFoundError(`La reserva con id: ${id}`);
     }
     if (![EstadoReserva.ASISTIO, EstadoReserva.NO_SHOW].includes(estado)) {
       throw new BusinessRuleError(`Estado de asistencia inválido: ${estado}`);
@@ -176,7 +183,7 @@ export class ReservasService {
   async eliminarReserva(id, restauranteId) {
     const reserva = await this.reservasRepository.findById(id, restauranteId);
     if (!reserva) {
-      throw new NonExistentResource(`La reserva con id: ${id}`);
+      throw new NotFoundError(`La reserva con id: ${id}`);
     }
     return await this.reservasRepository.findAndDelete(id, restauranteId);
   }

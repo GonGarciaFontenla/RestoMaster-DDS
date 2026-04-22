@@ -1,5 +1,4 @@
 import { UserREST } from "../dtos/UserDTO.js";
-import { CredencialesInvalidas } from "../errors/AuthError.js";
 
 export default class UserController {
   constructor(userService) {
@@ -8,18 +7,19 @@ export default class UserController {
 
   async login(req, res, next) {
     try {
+      // Fix #3: la validación de email/password fue movida al loginSchema (Zod).
+      // El controller solo se encarga de la lógica HTTP.
       const { email, password } = req.body;
-
-      if (!email || !password) {
-        throw new CredencialesInvalidas("Faltan credenciales");
-      }
-
       const { token, user } = await this.userService.login(email, password);
 
+      // Fix #2: maxAge sincronizado con expiresIn del JWT (24h).
+      // Sin maxAge la cookie era una session cookie que el browser eliminaba
+      // al cerrarse, independientemente de la vigencia del token JWT.
       res.cookie("token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
+        maxAge: 24 * 60 * 60 * 1000,
       });
 
       return res.status(200).json({
@@ -31,13 +31,18 @@ export default class UserController {
     }
   }
 
-  async logout(req, res) {
-    res.clearCookie("token", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-    return res.status(200).json({ estado: "success", mensaje: "Sesión cerrada" });
+  // Fix #18: se agrega next para poder propagar errores inesperados al errorHandler
+  async logout(req, res, next) {
+    try {
+      res.clearCookie("token", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      });
+      return res.status(200).json({ estado: "success", mensaje: "Sesión cerrada" });
+    } catch (err) {
+      next(err);
+    }
   }
 
   async createUser(req, res, next) {
@@ -59,7 +64,7 @@ export default class UserController {
 
   async getUsers(req, res, next) {
     try {
-      const users = await this.userService.retriveUsers(req.query);
+      const users = await this.userService.retrieveUsers(req.query); // Fix #11: typo corregido
 
       return res.status(200).json({
         estado: "success",
