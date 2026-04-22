@@ -44,18 +44,20 @@ export class ReservasRepository {
     return await nuevaReserva.save();
   }
 
+  // Fix #8 y #18: $set previene operator injection; runValidators aplica
+  // las reglas del schema (enum de estado, etc.) también en actualizaciones.
   async findAndUpdate(id, datosNuevos) {
     return await ReservaModel.findOneAndUpdate(
       { _id: id, ...this.baseFilter() },
-      datosNuevos,
-      { new: true },
+      { $set: datosNuevos },
+      { new: true, runValidators: true },
     ).populate("mesaReservada");
   }
 
   async findAndDelete(id) {
     return await ReservaModel.findOneAndUpdate(
       { _id: id, ...this.baseFilter() },
-      { deletedAt: new Date() },
+      { $set: { deletedAt: new Date() } },
       { new: true },
     );
   }

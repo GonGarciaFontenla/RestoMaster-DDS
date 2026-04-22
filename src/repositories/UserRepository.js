@@ -18,8 +18,14 @@ export class UserRepository {
     return await UsuarioModel.findById(id);
   }
 
+  // Fix #8 y #18: $set previene operator injection y runValidators aplica
+  // las reglas del schema (unique, enum, etc.) también en actualizaciones.
   async update(id, updateData) {
-    return await UsuarioModel.findByIdAndUpdate(id, updateData, { new: true }).select("-password");
+    return await UsuarioModel.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true },
+    ).select("-password");
   }
 
   async delete(id) {

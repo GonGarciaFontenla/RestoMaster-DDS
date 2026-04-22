@@ -21,7 +21,7 @@ export default class UserController {
 
   async getUsers(req, res, next) {
     try {
-      const users = await this.userService.retriveUsers(req.query);
+      const users = await this.userService.retrieveUsers(req.query);
 
       return res.status(200).json({
         estado: "success",

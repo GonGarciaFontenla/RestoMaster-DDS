@@ -1,19 +1,14 @@
 import { Router } from "express";
 import { validateSchema } from "../middlewares/validator.js";
 import { reservaSchema } from "../validations/reservaSchema.js";
+import { asistenciaSchema } from "../validations/asistenciaSchema.js";
 
 export const configureReservasRoutes = (reservasController) => {
   const router = Router();
 
-  router.get(
-    "/",
-    reservasController.obtenerReservas.bind(reservasController),
-  );
+  router.get("/", reservasController.obtenerReservas.bind(reservasController));
 
-  router.get(
-    "/disponibilidad",
-    reservasController.obtenerDisponibilidad.bind(reservasController),
-  );
+  router.get("/disponibilidad", reservasController.obtenerDisponibilidad.bind(reservasController));
 
   router.post(
     "/",
@@ -21,10 +16,7 @@ export const configureReservasRoutes = (reservasController) => {
     reservasController.crearReserva.bind(reservasController),
   );
 
-  router.get(
-    "/:id",
-    reservasController.obtenerReservaById.bind(reservasController),
-  );
+  router.get("/:id", reservasController.obtenerReservaById.bind(reservasController));
 
   router.put(
     "/:id",
@@ -32,25 +24,19 @@ export const configureReservasRoutes = (reservasController) => {
     reservasController.actualizarReserva.bind(reservasController),
   );
 
-  router.put(
-    "/:id/confirmar",
-    reservasController.confirmarReserva.bind(reservasController),
-  );
+  router.put("/:id/confirmar", reservasController.confirmarReserva.bind(reservasController));
 
-  router.put(
-    "/:id/cancelar",
-    reservasController.cancelarReserva.bind(reservasController),
-  );
+  router.put("/:id/cancelar", reservasController.cancelarReserva.bind(reservasController));
 
+  // Fix #6: se agrega validateSchema para rechazar bodies sin estado o con estado inválido
+  // antes de llegar al servicio, evitando un BusinessRuleError confuso.
   router.put(
     "/:id/asistencia",
+    validateSchema(asistenciaSchema),
     reservasController.registrarAsistencia.bind(reservasController),
   );
 
-  router.delete(
-    "/:id",
-    reservasController.eliminarReserva.bind(reservasController),
-  );
+  router.delete("/:id", reservasController.eliminarReserva.bind(reservasController));
 
   return router;
 };

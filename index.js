@@ -37,4 +37,9 @@ const startServer = async () => {
   });
 };
 
-startServer();
+// Fix #20: sin .catch(), un error en startServer() (ej: DB_URI inválida) emite
+// UnhandledPromiseRejection que puede crashear el proceso en Node.js moderno.
+startServer().catch((err) => {
+  console.error("❌ Error fatal al iniciar el servidor:", err.message);
+  process.exit(1);
+});

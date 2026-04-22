@@ -32,15 +32,16 @@ export class PedidosRepository {
     return await ComandaModel.findOneAndUpdate(
       { _id: id },
       { $push: { items: { $each: items } } },
-      { new: true },
+      { new: true, runValidators: true }, // Fix #18
     );
   }
 
+  // Fix #8: se usa $set explícito para evitar que operator injection sobreescriba campos
   async updateEstado(id, estado) {
     return await ComandaModel.findOneAndUpdate(
       { _id: id },
-      { estado },
-      { new: true },
+      { $set: { estado } },
+      { new: true, runValidators: true }, // Fix #18
     );
   }
 
@@ -48,7 +49,7 @@ export class PedidosRepository {
     return await ComandaModel.findOneAndUpdate(
       { _id: id, "items._id": itemId },
       { $set: { "items.$.estado": estadoItem } },
-      { new: true },
+      { new: true, runValidators: true }, // Fix #18
     );
   }
 }

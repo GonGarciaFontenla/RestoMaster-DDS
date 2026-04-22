@@ -18,11 +18,13 @@ export class MesasRepository {
     return await nuevaMesa.save();
   }
 
+  // Fix #8 y #18: $set previene operator injection y runValidators aplica
+  // las reglas del schema (enum, min, etc.) también en actualizaciones.
   async findAndUpdate(id, datosNuevos) {
     return await MesaModel.findOneAndUpdate(
       { _id: id },
-      datosNuevos,
-      { new: true },
+      { $set: datosNuevos },
+      { new: true, runValidators: true },
     );
   }
 }

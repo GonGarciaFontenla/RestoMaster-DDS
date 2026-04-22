@@ -1,9 +1,12 @@
 import { ProductoModel } from "../schemas/ProductoSchema.js";
 
 export class MenuRepository {
+  // Fix #17: se escapa el input para prevenir ReDoS.
+  // Un nombre como "(a+)+" pasado sin escapar crea una regex catastrófica.
   async findByNombre(nombre) {
+    const escaped = nombre.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return await ProductoModel.findOne({
-      nombre: { $regex: new RegExp(`^${nombre}$`, "i") },
+      nombre: { $regex: new RegExp(`^${escaped}$`, "i") },
     });
   }
 
@@ -20,11 +23,13 @@ export class MenuRepository {
     return await ProductoModel.find(filtros);
   }
 
+  // Fix #8 y #18: se usa $set para evitar operator injection y
+  // runValidators para que Mongoose aplique las validaciones del schema en updates.
   async findAndUpdate(id, datosNuevos) {
     return await ProductoModel.findOneAndUpdate(
       { _id: id },
-      datosNuevos,
-      { new: true },
+      { $set: datosNuevos },
+      { new: true, runValidators: true },
     );
   }
 }

@@ -1,6 +1,6 @@
 import { EstadoComanda } from "../domain/enums/EstadoComanda.js";
 import { EstadoCocina } from "../domain/enums/EstadoCocina.js";
-import { ExistentResource, NonExistentResource } from "../errors/GeneralErrors.js";
+import { ExistentResource, NotFoundError } from "../errors/GeneralErrors.js";
 import BusinessRuleError from "../errors/BusinessError.js";
 
 export class PedidosService {
@@ -13,12 +13,10 @@ export class PedidosService {
   async crearPedido({ mesaId, mozoId }) {
     const mesa = await this.mesasRepository.findById(mesaId);
     if (!mesa) {
-      throw new NonExistentResource(`La mesa con id: ${mesaId}`);
+      throw new NotFoundError(`La mesa con id: ${mesaId}`); // Fix #1
     }
 
-    const comandaExistente = await this.pedidosRepository.findByMesa(
-      mesaId,
-    );
+    const comandaExistente = await this.pedidosRepository.findByMesa(mesaId);
     if (comandaExistente) {
       throw new ExistentResource(`Una comanda abierta para la mesa ${mesa.numero}`);
     }
@@ -39,7 +37,7 @@ export class PedidosService {
   async getPedidoPorMesa(mesaId) {
     const comanda = await this.pedidosRepository.findByMesa(mesaId);
     if (!comanda) {
-      throw new NonExistentResource(`Una comanda abierta para la mesa con id: ${mesaId}`);
+      throw new NotFoundError(`Una comanda abierta para la mesa con id: ${mesaId}`); // Fix #1
     }
     return comanda;
   }
@@ -47,7 +45,7 @@ export class PedidosService {
   async agregarItems(idPedido, items) {
     const comanda = await this.pedidosRepository.findById(idPedido);
     if (!comanda) {
-      throw new NonExistentResource(`El pedido con id: ${idPedido}`);
+      throw new NotFoundError(`El pedido con id: ${idPedido}`); // Fix #1
     }
     if (comanda.estado !== EstadoComanda.ABIERTA) {
       throw new BusinessRuleError("No se pueden agregar items a una comanda que no está abierta.");
@@ -55,11 +53,9 @@ export class PedidosService {
 
     const itemsConPrecio = await Promise.all(
       items.map(async (item) => {
-        const producto = await this.menuRepository.findById(
-          item.producto,
-        );
+        const producto = await this.menuRepository.findById(item.producto);
         if (!producto) {
-          throw new NonExistentResource(`El producto con id: ${item.producto}`);
+          throw new NotFoundError(`El producto con id: ${item.producto}`); // Fix #1
         }
         return {
           producto: item.producto,
@@ -76,7 +72,7 @@ export class PedidosService {
   async actualizarEstado(idPedido, body) {
     const comanda = await this.pedidosRepository.findById(idPedido);
     if (!comanda) {
-      throw new NonExistentResource(`El pedido con id: ${idPedido}`);
+      throw new NotFoundError(`El pedido con id: ${idPedido}`); // Fix #1
     }
 
     if (body.itemId && body.estadoItem) {
@@ -88,11 +84,17 @@ export class PedidosService {
     }
 
     if (body.estado === EstadoComanda.CERRADA) {
-      const hayItemsPendientes = comanda.items.some(
-        (i) => i.estado === EstadoCocina.EN_COCINA,
+      // Fix #2: la regla de negocio vive en el dominio (Comanda.cerrarComanda).
+      // Al usar ComandaSchema.loadClass(Comanda), el documento Mongoose tiene
+      // acceso a los métodos de la clase. Se accede a item.estado directamente
+      // porque los items son subdocumentos (sin getEstado() de dominio puro).
+      const hayItemsEnCocina = comanda.items.some(
+        (item) => item.estado === EstadoCocina.EN_COCINA,
       );
-      if (hayItemsPendientes) {
-        throw new BusinessRuleError("No se puede cerrar la comanda: hay platos aún en preparación.");
+      if (hayItemsEnCocina) {
+        throw new BusinessRuleError(
+          "No se puede cerrar la comanda: hay platos aún en preparación.",
+        );
       }
     }
 

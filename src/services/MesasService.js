@@ -1,4 +1,4 @@
-import { ExistentResource, NonExistentResource } from "../errors/GeneralErrors.js";
+import { ExistentResource, NotFoundError } from "../errors/GeneralErrors.js";
 
 export class MesasService {
   constructor(mesasRepository) {
@@ -25,7 +25,7 @@ export class MesasService {
     const mesa = await this.mesasRepository.findById(idMesa);
 
     if (!mesa) {
-      throw new NonExistentResource(`La mesa con id: ${idMesa}`);
+      throw new NotFoundError(`La mesa con id: ${idMesa}`);
     }
 
     return await this.mesasRepository.findAndUpdate(idMesa, datosNuevos);

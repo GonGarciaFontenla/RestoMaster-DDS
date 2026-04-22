@@ -6,17 +6,15 @@ export default class ReservasController {
   }
 
   async obtenerReservas(req, res, next) {
-      const reservas = await this.reservasService.obtenerReservas(
-        req.query,
-      );
-      return res.status(200).json({
-        estado: "success",
-        mensaje: "Reservas devueltas exitosamente",
-        reservas: reservas.map((r) => ReservaREST(r)),
-      });
-    } catch (err) {
-      next(err);
-    }
+    const reservas = await this.reservasService.obtenerReservas(req.query);
+    return res.status(200).json({
+      estado: "success",
+      mensaje: "Reservas devueltas exitosamente",
+      reservas: reservas.map((r) => ReservaREST(r)),
+    });
+  }
+  catch(err) {
+    next(err);
   }
 
   async obtenerReservaById(req, res, next) {
@@ -98,9 +96,7 @@ export default class ReservasController {
 
   async cancelarReserva(req, res, next) {
     try {
-      const reserva = await this.reservasService.cancelarReserva(
-        req.params.id,
-      );
+      const reserva = await this.reservasService.cancelarReserva(req.params.id);
       return res.status(200).json({
         estado: "success",
         mensaje: "Reserva cancelada exitosamente",

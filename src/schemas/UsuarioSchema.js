@@ -12,6 +12,12 @@ export const UsuarioSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  // Fix #9: campo password faltante — sin esto Mongoose descarta la contraseña
+  // silenciosamente al guardar, creando usuarios sin autenticación posible.
+  password: {
+    type: String,
+    required: true,
+  },
   tipo: {
     type: String,
     required: true,

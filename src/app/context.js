@@ -3,7 +3,7 @@ import MesasController from "../controllers/MesasController.js";
 import PedidosController from "../controllers/PedidosController.js";
 import ReservasController from "../controllers/ReservasController.js";
 import UserController from "../controllers/UserController.js";
-import MenuService from "../services/MenuService.js";
+import { MenuService } from "../services/MenuService.js";
 import { MesasService } from "../services/MesasService.js";
 import { PedidosService } from "../services/PedidosService.js";
 import { ReservasService } from "../services/ReservasService.js";
