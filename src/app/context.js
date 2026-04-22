@@ -2,10 +2,11 @@ import MenuController from "../controllers/MenuController.js";
 import MesasController from "../controllers/MesasController.js";
 import PedidosController from "../controllers/PedidosController.js";
 import ReservasController from "../controllers/ReservasController.js";
-import MenuService from "../services/MenuService.js";
+import { MenuService } from "../services/MenuService.js";
 import { MesasService } from "../services/MesasService.js";
 import { PedidosService } from "../services/PedidosService.js";
 import { ReservasService } from "../services/ReservasService.js";
+import { randomUUID } from "crypto";
 
 /*
  * buildAppContext ensambla toda la cadena de dependencias:
@@ -36,7 +37,7 @@ export const buildAppContext = () => {
 const crearRepositorioEnMemoria = () => ({
   findAll: async () => [],
   findById: async () => null,
-  create: async (datos) => ({ _id: "stub-id", ...datos }),
+  create: async (datos) => ({ _id: randomUUID(), ...datos }),
   findAndUpdate: async () => null,
   findAndDelete: async () => null,
   findByIdAndRestaurante: async () => null,

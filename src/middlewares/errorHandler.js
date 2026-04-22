@@ -1,7 +1,7 @@
 import AppError from "../errors/AppError.js";
 
 export const errorHandler = (err, req, res, next) => {
-  console.error("🔥 ERROR:", err.message);
+  console.error("🔥 ERROR:", err.stack || err.message);
 
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({

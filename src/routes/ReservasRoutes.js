@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { validateSchema } from "../middlewares/validator.js";
 import { reservaSchema } from "../validations/reservaSchema.js";
+import { asistenciaSchema } from "../validations/asistenciaSchema.js";
 
 export const configureReservasRoutes = (reservasController) => {
   const router = Router();
@@ -27,7 +28,11 @@ export const configureReservasRoutes = (reservasController) => {
 
   router.put("/:id/cancelar", reservasController.cancelarReserva.bind(reservasController));
 
-  router.put("/:id/asistencia", reservasController.registrarAsistencia.bind(reservasController));
+  router.put(
+    "/:id/asistencia",
+    validateSchema(asistenciaSchema),
+    reservasController.registrarAsistencia.bind(reservasController),
+  );
 
   router.delete("/:id", reservasController.eliminarReserva.bind(reservasController));
 
