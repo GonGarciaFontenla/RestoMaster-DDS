@@ -25,7 +25,7 @@ Cliente → POST /auth/login → [Zod valida email+password] → UserController 
   5. La respuesta incluye los datos del usuario sin la contraseña.
 ```
 
-**¿Por qué `bcrypt`?** `bcrypt` es una función de *hashing* de contraseñas con sal incorporada (salt). A diferencia del cifrado reversible, el hash no puede "desencriptarse": para verificar una contraseña, `bcrypt.compare()` hashea el valor recibido y compara el resultado con el hash almacenado. Esto garantiza que, incluso si la base de datos es comprometida, las contraseñas originales no pueden recuperarse.
+**¿Por qué `bcrypt`?** `bcrypt` es una función de _hashing_ de contraseñas con sal incorporada (salt). A diferencia del cifrado reversible, el hash no puede "desencriptarse": para verificar una contraseña, `bcrypt.compare()` hashea el valor recibido y compara el resultado con el hash almacenado. Esto garantiza que, incluso si la base de datos es comprometida, las contraseñas originales no pueden recuperarse.
 
 **¿Por qué cookie `HttpOnly` y no `Authorization` header?** La cookie `HttpOnly` no puede ser leída desde JavaScript del navegador, protegiéndola de ataques XSS (Cross-Site Scripting). El middleware `authenticate` acepta ambas formas (cookie o header `Authorization: Bearer <token>`) para compatibilidad con clientes móviles o APIs consumidas por terceros.
 
@@ -39,23 +39,23 @@ La autorización se implementa en `src/middlewares/auth.js` con dos funciones bi
 
 ```js
 // 1. Verifica identidad — ¿Quién sos?
-authenticate(req, res, next)
+authenticate(req, res, next);
 
 // 2. Verifica permisos — ¿Tenés permiso para esto?
-requireRole(...roles)(req, res, next)
+requireRole(...roles)(req, res, next);
 ```
 
 **Justificación:** Separar autenticación de autorización respeta el **Principio de Responsabilidad Única (SRP)**. `authenticate` solo valida que el token sea legítimo y lo decodifica; `requireRole` solo verifica que el rol del usuario esté en la lista de roles permitidos para esa operación. Si mañana se añade un nuevo mecanismo de autenticación (OAuth, API keys), `requireRole` no necesita cambiar.
 
 ### Códigos HTTP correctos
 
-| Situación | Código | Semántica |
-|-----------|--------|-----------|
-| No se envió token | `401 Unauthorized` | No estás identificado |
-| Token inválido o expirado | `401 Unauthorized` | Tu identidad no puede verificarse |
-| Token válido pero rol insuficiente | `403 Forbidden` | Te conozco, pero no tenés acceso |
+| Situación                          | Código             | Semántica                         |
+| ---------------------------------- | ------------------ | --------------------------------- |
+| No se envió token                  | `401 Unauthorized` | No estás identificado             |
+| Token inválido o expirado          | `401 Unauthorized` | Tu identidad no puede verificarse |
+| Token válido pero rol insuficiente | `403 Forbidden`    | Te conozco, pero no tenés acceso  |
 
-Esta distinción es importante: `401` indica un problema de *autenticación* (quién sos), `403` indica un problema de *autorización* (qué podés hacer).
+Esta distinción es importante: `401` indica un problema de _autenticación_ (quién sos), `403` indica un problema de _autorización_ (qué podés hacer).
 
 ### Flujo integrado en las rutas
 
@@ -98,13 +98,3 @@ return { token, user: userSinPassword };
 ```
 
 El `UserDTO` (`UserREST`) refuerza esto como segunda barrera: solo expone `id`, `nombre`, `email` y `tipo`.
-
-### `restauranteId` nunca editable por el cliente
-
-`UserService.updateUser()` desestructura y descarta `restauranteId` del body antes de persistir cambios:
-
-```js
-const { restauranteId, ...datosPermitidos } = updateData;
-```
-
-Esto garantiza que ningún cliente pueda reasignar un usuario a otro restaurante, incluso si envía ese campo en el body.

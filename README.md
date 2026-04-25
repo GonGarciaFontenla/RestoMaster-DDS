@@ -1,203 +1,100 @@
-# RestoMaster — Iteración 2: Exposición de APIs, Servicios y DTOs (+ Bonus: Auth JWT)
+# Fundamentación Técnica — Bonus Track: Autenticación y Autorización con JWT
 
-## 🎯 Objetivo de esta iteración
+## Introducción
 
-Sobre la base del modelo de dominio de la Iteración 1, se agregan las **capas de servicio, controladores, rutas y DTOs** para exponer la lógica de negocio como una API REST consumible por cualquier cliente HTTP.
-
----
-
-## 📁 Estructura de archivos nueva en esta iteración
-
-```
-src/
-├── services/
-│   ├── MesasService.js       → Lógica de negocio para mesas
-│   ├── MenuService.js        → Lógica de negocio para el menú
-│   ├── PedidosService.js     → Lógica de negocio para comandas
-│   ├── ReservasService.js    → Lógica de negocio para reservas
-│   └── UserService.js        → [Bonus] Login, registro y gestión de usuarios
-├── controllers/
-│   ├── MesasController.js
-│   ├── MenuController.js
-│   ├── PedidosController.js
-│   ├── ReservasController.js
-│   └── UserController.js     → [Bonus] Login, logout, CRUD de usuarios, /me
-├── routes/
-│   ├── MesasRoutes.js        → [Bonus] Protegidas con authenticate + requireRole
-│   ├── MenuRoutes.js         → [Bonus] Protegidas con authenticate + requireRole
-│   ├── PedidosRoutes.js      → [Bonus] Protegidas con authenticate + requireRole
-│   ├── ReservasRoutes.js     → [Bonus] Protegidas con authenticate + requireRole
-│   └── AuthRoutes.js         → [Bonus] /login, /logout, /me, /users
-├── dtos/
-│   ├── MesasDTO.js
-│   ├── PlatoDTO.js
-│   ├── ReservaDTO.js
-│   └── UserDTO.js            → [Bonus] Nunca expone password ni restauranteId
-├── middlewares/
-│   ├── errorHandler.js
-│   ├── validator.js
-│   └── auth.js               → [Bonus] authenticate (JWT) + requireRole (roles)
-├── validations/
-│   ├── mesaSchema.js
-│   ├── productoSchema.js
-│   ├── reservaSchema.js
-│   ├── comandaSchema.js
-│   ├── itemComandaSchema.js
-│   └── userSchema.js         → [Bonus] Validación de datos de usuario
-└── app/
-    └── context.js
-
-index.js
-.env.example                  → [Bonus] Variables de entorno requeridas
-```
+Esta sección documenta las decisiones de diseño e implementación de la capa de seguridad añadida como bonus a la Entrega 2. El sistema implementa **autenticación sin estado (stateless)** basada en JSON Web Tokens y **autorización basada en roles (RBAC)** mediante middlewares de Express.
 
 ---
 
-## 🏗️ Arquitectura en Capas
+## 1. Autenticación Stateless con JWT
+
+### ¿Por qué JWT y no sesiones en servidor?
+
+RestoMaster no guarda sesiones en memoria ni en base de datos. En su lugar, usa el estándar **JWT (JSON Web Token)**: cada petición lleva consigo un token firmado que contiene toda la información necesaria para identificar al usuario.
+
+**Justificación:** Las sesiones en servidor (almacenadas en memoria o Redis) acoplan la aplicación a una instancia específica del proceso. JWT elimina este acoplamiento: cualquier instancia del servidor puede verificar el token de forma independiente validando la firma con el `JWT_SECRET`, lo que habilita la escalabilidad horizontal sin infraestructura adicional de sesiones compartidas. Este es el principio de **Statelessness** de REST.
+
+### Flujo de login seguro
 
 ```
-Request HTTP
-    ↓
-[ Router ]           → define la URL y delega al Controller
-    ↓
-[ Middleware ]        → valida el body (Zod) antes de continuar
-    ↓
-[ Controller ]        → extrae datos del request, llama al Service
-    ↓
-[ Service ]           → contiene la lógica de negocio, usa el Repository
-    ↓
-[ Repository ]        → acceso a datos (stub en memoria en esta iteración)
-    ↓
-[ Controller ]        → formatea la respuesta usando un DTO
-    ↓
-Response HTTP
+Cliente → POST /auth/login → [Zod valida email+password] → UserController → UserService
+  1. Se busca el usuario por email en el repositorio.
+  2. bcrypt.compare() verifica la contraseña enviada contra el hash almacenado.
+  3. Si es válida, jwt.sign() genera un token firmado con { id, tipo, restauranteId }.
+  4. El token se entrega vía cookie HttpOnly (inaccesible desde JavaScript del browser).
+  5. La respuesta incluye los datos del usuario sin la contraseña.
 ```
+
+**¿Por qué `bcrypt`?** `bcrypt` es una función de _hashing_ de contraseñas con sal incorporada (salt). A diferencia del cifrado reversible, el hash no puede "desencriptarse": para verificar una contraseña, `bcrypt.compare()` hashea el valor recibido y compara el resultado con el hash almacenado. Esto garantiza que, incluso si la base de datos es comprometida, las contraseñas originales no pueden recuperarse.
+
+**¿Por qué cookie `HttpOnly` y no `Authorization` header?** La cookie `HttpOnly` no puede ser leída desde JavaScript del navegador, protegiéndola de ataques XSS (Cross-Site Scripting). El middleware `authenticate` acepta ambas formas (cookie o header `Authorization: Bearer <token>`) para compatibilidad con clientes móviles o APIs consumidas por terceros.
 
 ---
 
-## 🔄 Patrón DTO
+## 2. Autorización Basada en Roles (RBAC) mediante Middlewares
 
-Los DTOs son funciones puras que transforman un objeto del dominio en una representación segura para el cliente, **ocultando datos sensibles** como el `restauranteId` interno.
+### Los dos middlewares de seguridad
+
+La autorización se implementa en `src/middlewares/auth.js` con dos funciones bien diferenciadas:
 
 ```js
-// Sin DTO ❌ — expone datos internos
-res.json(mesa);
-// → { _id, numero, capacidad, ubicacion, estado, restauranteId, __v }
+// 1. Verifica identidad — ¿Quién sos?
+authenticate(req, res, next);
 
-// Con DTO ✅ — solo lo necesario
-res.json(MesasREST(mesa));
-// → { id, numero, capacidad, ubicacion, estado }
+// 2. Verifica permisos — ¿Tenés permiso para esto?
+requireRole(...roles)(req, res, next);
 ```
+
+**Justificación:** Separar autenticación de autorización respeta el **Principio de Responsabilidad Única (SRP)**. `authenticate` solo valida que el token sea legítimo y lo decodifica; `requireRole` solo verifica que el rol del usuario esté en la lista de roles permitidos para esa operación. Si mañana se añade un nuevo mecanismo de autenticación (OAuth, API keys), `requireRole` no necesita cambiar.
+
+### Códigos HTTP correctos
+
+| Situación                          | Código             | Semántica                         |
+| ---------------------------------- | ------------------ | --------------------------------- |
+| No se envió token                  | `401 Unauthorized` | No estás identificado             |
+| Token inválido o expirado          | `401 Unauthorized` | Tu identidad no puede verificarse |
+| Token válido pero rol insuficiente | `403 Forbidden`    | Te conozco, pero no tenés acceso  |
+
+Esta distinción es importante: `401` indica un problema de _autenticación_ (quién sos), `403` indica un problema de _autorización_ (qué podés hacer).
+
+### Flujo integrado en las rutas
+
+Los middlewares se encadenan como guardias sucesivos antes de que lleguen a los controladores:
+
+```js
+router.post(
+  "/",
+  authenticate,                          // 1. ¿Tenés token válido?
+  requireRole(TipoUsuario.ADMIN),        // 2. ¿Sos ADMIN?
+  validateSchema(productoSchema),        // 3. ¿El body es válido?
+  menuController.addPlato.bind(...)      // 4. Recién ahora se ejecuta la lógica
+);
+```
+
+**Justificación:** Esta secuencia aplica el principio **Fail-Fast**: cada guardia aborta la cadena lo antes posible si una condición no se cumple. Al delegar los errores al `errorHandler` centralizado mediante `next(new AppError(...))`, todos los errores de seguridad siguen el mismo formato de respuesta que el resto del sistema.
 
 ---
 
-## ✅ Endpoints disponibles
+## 3. Separación de Responsabilidades en las Rutas de Usuario
 
-### Menú
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| `GET` | `/api/menu` | Lista los platos (con filtros por query) |
-| `POST` | `/api/menu` | Agrega un nuevo plato |
-| `PUT` | `/api/menu/:id` | Modifica un plato existente |
+Las rutas de usuario están divididas en dos archivos:
 
-### Mesas
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| `GET` | `/api/mesas` | Lista todas las mesas |
-| `POST` | `/api/mesas` | Crea una nueva mesa |
-| `PUT` | `/api/mesas/:id` | Actualiza una mesa |
-| `GET` | `/api/mesas/:tableId/pedidos` | Obtiene el pedido activo de una mesa |
+- **`AuthRoutes.js`** (`/auth`): rutas de sesión — `POST /login`, `POST /logout`, `GET /me`. No requieren roles, solo gestión de identidad.
+- **`UserRoutes.js`** (`/usuarios`): rutas de gestión de empleados — CRUD protegido exclusivamente por `requireRole(ADMIN)`.
 
-### Pedidos (Comandas)
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| `POST` | `/api/pedidos` | Crea una comanda para una mesa |
-| `GET` | `/api/pedidos/active` | Lista las comandas abiertas |
-| `PATCH` | `/api/pedidos/:id/items` | Agrega ítems a una comanda |
-| `PATCH` | `/api/pedidos/:id/status` | Actualiza el estado de la comanda o un ítem |
-
-### Reservas
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| `GET` | `/api/reservas` | Lista reservas (con filtros) |
-| `GET` | `/api/reservas/disponibilidad` | Consulta mesas disponibles |
-| `POST` | `/api/reservas` | Crea una reserva |
-| `GET` | `/api/reservas/:id` | Obtiene una reserva por ID |
-| `PUT` | `/api/reservas/:id` | Actualiza una reserva |
-| `PUT` | `/api/reservas/:id/confirmar` | Confirma una reserva |
-| `PUT` | `/api/reservas/:id/cancelar` | Cancela una reserva |
-| `PUT` | `/api/reservas/:id/asistencia` | Registra asistencia o no-show |
-| `DELETE` | `/api/reservas/:id` | Elimina una reserva |
+**Justificación:** Mezclar autenticación con gestión de usuarios en un solo archivo viola el **SRP**: el motivo de cambio de las rutas de sesión (cambiar el mecanismo de auth) es distinto al de las rutas de CRUD (cambiar las reglas de acceso a usuarios). La separación hace que cada archivo tenga una sola razón para cambiar.
 
 ---
 
-## 🚀 Cómo correr el servidor
+## 4. Protección de Datos Sensibles
 
-```bash
-npm install
-npm run dev
+### Contraseña nunca expuesta en respuestas
+
+`UserService.login()` omite el campo `password` del objeto devuelto antes de que llegue al controlador:
+
+```js
+const { password: _, ...userSinPassword } = user._doc ?? user;
+return { token, user: userSinPassword };
 ```
 
-El servidor levanta en `http://localhost:4000`.
-
-> **Nota sobre los repositorios:** En esta iteración los repositorios son **stubs en memoria** que devuelven datos vacíos o ficticios. La conexión real a la base de datos se implementará en la **Iteración 3**.
-
----
-
-## 📌 Decisiones de diseño
-
-- **`req.restauranteId`** lo inyecta el middleware `authenticate` al decodificar el token. Todos los controllers lo leen de `req.restauranteId` con una interfaz unificada.
-- **`ReservasService` recibe `mesasRepository` por constructor** en lugar de importar `MesaModel` directamente. Esto lo desacopla de la base de datos.
-
----
-
-## 🔐 Bonus: Autenticación y Autorización JWT
-
-### Flujo de autenticación
-
-```
-POST /api/auth/login
-  → UserService.login() verifica email + bcrypt.compare(password)
-  → Genera JWT con { id, tipo, restauranteId }
-  → Responde con cookie httpOnly + body con datos del usuario
-
-Requests siguientes:
-  → authenticate() lee la cookie (o header Authorization)
-  → jwt.verify() decodifica el token y popula req.user y req.restauranteId
-  → requireRole() verifica que req.user.tipo esté en la lista permitida
-```
-
-### Roles y permisos
-
-| Rol | Puede hacer |
-|-----|-------------|
-| `ADMIN` | Todo: crear mesas, platos, usuarios, eliminar reservas |
-| `MOZO` | Ver y actualizar mesas, crear/gestionar pedidos y reservas |
-| `COCINERO` | Ver pedidos activos y actualizar estado de ítems |
-
-### Nuevos endpoints
-
-| Método | Ruta | Auth | Descripción |
-|--------|------|------|-------------|
-| `POST` | `/api/auth/login` | ❌ Público | Inicia sesión y devuelve token |
-| `GET` | `/api/auth/me` | ✅ JWT | Devuelve el usuario autenticado |
-| `POST` | `/api/auth/logout` | ✅ JWT | Limpia la cookie de sesión |
-| `POST` | `/api/users` | ✅ ADMIN | Crea un nuevo usuario |
-| `GET` | `/api/users` | ✅ ADMIN | Lista todos los usuarios |
-| `PUT` | `/api/users/:id` | ✅ ADMIN | Actualiza un usuario |
-| `DELETE` | `/api/users/:id` | ✅ ADMIN | Elimina un usuario |
-
-### Variables de entorno requeridas
-
-Crear un archivo `.env` basado en `.env.example`:
-
-```bash
-cp .env.example .env
-# Editar .env y setear un JWT_SECRET seguro
-```
-
-```
-PORT=4000
-JWT_SECRET=tu_secreto_super_seguro_aqui
-NODE_ENV=development
-```
+El `UserDTO` (`UserREST`) refuerza esto como segunda barrera: solo expone `id`, `nombre`, `email` y `tipo`.
