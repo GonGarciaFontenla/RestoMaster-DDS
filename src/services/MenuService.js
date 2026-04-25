@@ -1,6 +1,5 @@
 import { ExistentResource, NotFoundError } from "../errors/GeneralErrors.js";
 
-// Fix #6: se unifica a named export para consistencia con el resto de los servicios
 export class MenuService {
   constructor(menuRepository) {
     this.menuRepository = menuRepository;
@@ -19,11 +18,11 @@ export class MenuService {
     return await this.menuRepository.create(platoData);
   }
 
-  // Fix #7: corregido typo "retrive" → "retrieve"
   async retrievePlates(queryParametros = {}, restauranteId) {
     const filtros = { restauranteId };
 
-    if (queryParametros.categoria) filtros.categoria = queryParametros.categoria;
+    if (queryParametros.categoria)
+      filtros.categoria = queryParametros.categoria;
     if (queryParametros.nombre) filtros.nombre = queryParametros.nombre;
     if (queryParametros.disponible !== undefined) {
       filtros.disponible = queryParametros.disponible === "true";
@@ -33,12 +32,19 @@ export class MenuService {
   }
 
   async modifyPlate(idPlato, datosNuevos, restauranteId) {
-    const platoExistente = await this.menuRepository.findByIdAndRestaurante(idPlato, restauranteId);
+    const platoExistente = await this.menuRepository.findByIdAndRestaurante(
+      idPlato,
+      restauranteId,
+    );
 
     if (!platoExistente) {
       throw new NotFoundError(`El plato con id: ${idPlato}`);
     }
 
-    return await this.menuRepository.findAndUpdate(idPlato, datosNuevos, restauranteId);
+    return await this.menuRepository.findAndUpdate(
+      idPlato,
+      datosNuevos,
+      restauranteId,
+    );
   }
 }

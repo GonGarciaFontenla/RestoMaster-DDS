@@ -1,6 +1,3 @@
-// Fix #14: se agrega validateQuery para validar parámetros de req.query (ej: GET /disponibilidad)
-// El validador original solo cubría req.body, dejando sin protección a los endpoints GET con filtros.
-
 export const validateSchema = (schema) => {
   return (req, res, next) => {
     const result = schema.safeParse(req.body);

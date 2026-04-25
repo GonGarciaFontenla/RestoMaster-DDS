@@ -37,7 +37,9 @@ export class ReservasService {
 
     const horarioReserva = new Date(datos.horario);
     if (horarioReserva < new Date()) {
-      throw new BusinessRuleError("No se puede crear una reserva para una fecha pasada");
+      throw new BusinessRuleError(
+        "No se puede crear una reserva para una fecha pasada",
+      );
     }
 
     const reservaExistente = await this.reservasRepository.existeReservaEnMesa(
@@ -46,7 +48,9 @@ export class ReservasService {
       restauranteId,
     );
     if (reservaExistente) {
-      throw new ExistentResource(`Ya existe una reserva para la mesa ${mesa.numero} en ese horario`);
+      throw new ExistentResource(
+        `Ya existe una reserva para la mesa ${mesa.numero} en ese horario`,
+      );
     }
 
     return await this.reservasRepository.create({
@@ -62,7 +66,10 @@ export class ReservasService {
       throw new NotFoundError(`La reserva con id: ${id}`);
     }
 
-    if (datosNuevos.mesaReservada && datosNuevos.mesaReservada !== reserva.mesaReservada._id.toString()) {
+    if (
+      datosNuevos.mesaReservada &&
+      datosNuevos.mesaReservada !== reserva.mesaReservada._id.toString()
+    ) {
       const nuevaMesa = await this.mesasRepository.findByIdAndRestaurante(
         datosNuevos.mesaReservada,
         restauranteId,
@@ -71,7 +78,8 @@ export class ReservasService {
         throw new NotFoundError("La nueva mesa especificada");
       }
 
-      const cantidadComensales = datosNuevos.cantidadComensales || reserva.cantidadComensales;
+      const cantidadComensales =
+        datosNuevos.cantidadComensales || reserva.cantidadComensales;
       if (cantidadComensales > nuevaMesa.capacidad) {
         throw new BusinessRuleError(
           `La nueva mesa tiene capacidad para ${nuevaMesa.capacidad} comensales`,
@@ -86,18 +94,21 @@ export class ReservasService {
         id,
       );
       if (conflicto) {
-        throw new ExistentResource("ya existe una reserva en esa mesa para ese horario");
+        throw new ExistentResource(
+          "ya existe una reserva en esa mesa para ese horario",
+        );
       }
     }
 
-    // Fix #11: se convierten ambos lados a Date antes de comparar para evitar
-    // comparaciones fallidas entre string ISO y objeto Date (tipo mixto).
     if (
       datosNuevos.horario &&
-      new Date(datosNuevos.horario).getTime() !== new Date(reserva.horario).getTime()
+      new Date(datosNuevos.horario).getTime() !==
+        new Date(reserva.horario).getTime()
     ) {
       if (new Date(datosNuevos.horario) < new Date()) {
-        throw new BusinessRuleError("No se puede cambiar a un horario en el pasado");
+        throw new BusinessRuleError(
+          "No se puede cambiar a un horario en el pasado",
+        );
       }
 
       const conflicto = await this.reservasRepository.existeReservaEnMesa(
@@ -111,15 +122,23 @@ export class ReservasService {
       }
     }
 
-    return await this.reservasRepository.findAndUpdate(id, datosNuevos, restauranteId);
+    return await this.reservasRepository.findAndUpdate(
+      id,
+      datosNuevos,
+      restauranteId,
+    );
   }
 
   async obtenerDisponibilidad(restauranteId, fecha, hora, cantidadComensales) {
     if (!fecha || !hora || !cantidadComensales) {
-      throw new BusinessRuleError("fecha, hora y cantidadComensales son obligatorios");
+      throw new BusinessRuleError(
+        "fecha, hora y cantidadComensales son obligatorios",
+      );
     }
     if (cantidadComensales < 1) {
-      throw new BusinessRuleError("La cantidad de comensales debe ser mayor a 0");
+      throw new BusinessRuleError(
+        "La cantidad de comensales debe ser mayor a 0",
+      );
     }
     return await this.reservasRepository.findAvailableTables(
       restauranteId,
@@ -135,7 +154,9 @@ export class ReservasService {
       throw new NotFoundError(`La reserva con id: ${id}`);
     }
     if (reserva.estado !== EstadoReserva.PENDIENTE) {
-      throw new BusinessRuleError(`No se puede confirmar una reserva en estado ${reserva.estado}`);
+      throw new BusinessRuleError(
+        `No se puede confirmar una reserva en estado ${reserva.estado}`,
+      );
     }
     return await this.reservasRepository.findAndUpdate(
       id,
@@ -149,12 +170,16 @@ export class ReservasService {
     if (!reserva) {
       throw new NotFoundError(`La reserva con id: ${id}`);
     }
-    // Fix #3: se convierte explícitamente a Date para evitar comparación
-    // incierta entre string ISO (del repositorio) y objeto Date (new Date()).
     if (new Date(reserva.horario) < new Date()) {
-      throw new BusinessRuleError("No se puede cancelar una reserva que ya pasó");
+      throw new BusinessRuleError(
+        "No se puede cancelar una reserva que ya pasó",
+      );
     }
-    if (![EstadoReserva.PENDIENTE, EstadoReserva.CONFIRMADA].includes(reserva.estado)) {
+    if (
+      ![EstadoReserva.PENDIENTE, EstadoReserva.CONFIRMADA].includes(
+        reserva.estado,
+      )
+    ) {
       throw new BusinessRuleError(
         `No se puede cancelar una reserva en estado ${reserva.estado}`,
       );
@@ -175,9 +200,15 @@ export class ReservasService {
       throw new BusinessRuleError(`Estado de asistencia inválido: ${estado}`);
     }
     if (reserva.estado !== EstadoReserva.CONFIRMADA) {
-      throw new BusinessRuleError("La reserva debe estar en estado CONFIRMADA para registrar asistencia");
+      throw new BusinessRuleError(
+        "La reserva debe estar en estado CONFIRMADA para registrar asistencia",
+      );
     }
-    return await this.reservasRepository.findAndUpdate(id, { estado }, restauranteId);
+    return await this.reservasRepository.findAndUpdate(
+      id,
+      { estado },
+      restauranteId,
+    );
   }
 
   async eliminarReserva(id, restauranteId) {

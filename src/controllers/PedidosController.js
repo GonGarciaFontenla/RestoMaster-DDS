@@ -6,7 +6,7 @@ export default class PedidosController {
   async crearPedido(req, res, next) {
     try {
       const restauranteId = req.restauranteId;
-      const mozoId = req.body.mozoId;
+      const mozoId = req.body.mozo;
       const mesaId = req.body.mesa;
 
       const pedido = await this.pedidosService.crearPedido({ mesaId, mozoId, restauranteId });

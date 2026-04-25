@@ -19,7 +19,10 @@ export const configureMesasRoutes = (mesasController, pedidosController) => {
     mesasController.actualizarMesa.bind(mesasController),
   );
 
-  router.get("/:tableId/pedidos", pedidosController.getPedidoPorMesa.bind(pedidosController));
+  router.get(
+    "/:tableId/pedidos",
+    pedidosController.getPedidoPorMesa.bind(pedidosController),
+  );
 
   return router;
 };

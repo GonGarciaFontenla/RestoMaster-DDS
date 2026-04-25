@@ -23,12 +23,19 @@ export class MesasService {
   }
 
   async actualizarMesa(idMesa, datosNuevos, restauranteId) {
-    const mesa = await this.mesasRepository.findByIdAndRestaurante(idMesa, restauranteId);
+    const mesa = await this.mesasRepository.findByIdAndRestaurante(
+      idMesa,
+      restauranteId,
+    );
 
     if (!mesa) {
       throw new NotFoundError(`La mesa con id: ${idMesa}`);
     }
 
-    return await this.mesasRepository.findAndUpdate(idMesa, datosNuevos, restauranteId);
+    return await this.mesasRepository.findAndUpdate(
+      idMesa,
+      datosNuevos,
+      restauranteId,
+    );
   }
 }
