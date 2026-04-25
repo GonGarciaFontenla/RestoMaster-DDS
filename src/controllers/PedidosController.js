@@ -9,27 +9,16 @@ export default class PedidosController {
       const mozoId = req.body.mozo;
       const mesaId = req.body.mesa;
 
-      const pedido = await this.pedidosService.crearPedido({ mesaId, mozoId, restauranteId });
+      const pedido = await this.pedidosService.crearPedido({
+        mesaId,
+        mozoId,
+        restauranteId,
+      });
 
       return res.status(201).json({
         estado: "success",
         mensaje: "Pedido creado exitosamente",
         pedido,
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  async getPedidosActivos(req, res, next) {
-    try {
-      const restauranteId = req.restauranteId;
-      const pedidos = await this.pedidosService.getPedidosActivos(restauranteId);
-
-      return res.status(200).json({
-        estado: "success",
-        mensaje: "Pedidos activos devueltos exitosamente",
-        pedidos,
       });
     } catch (err) {
       next(err);

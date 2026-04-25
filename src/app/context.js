@@ -23,8 +23,15 @@ export const buildAppContext = () => {
 
   const menuService = new MenuService(menuRepository);
   const mesasService = new MesasService(mesasRepository);
-  const pedidosService = new PedidosService(pedidosRepository, menuRepository, mesasRepository);
-  const reservasService = new ReservasService(reservasRepository, mesasRepository);
+  const pedidosService = new PedidosService(
+    pedidosRepository,
+    menuRepository,
+    mesasRepository,
+  );
+  const reservasService = new ReservasService(
+    reservasRepository,
+    mesasRepository,
+  );
 
   return {
     menuController: new MenuController(menuService),
@@ -44,7 +51,6 @@ const crearRepositorioEnMemoria = () => ({
   findByNumeroAndRestaurante: async () => null,
   findByNombreAndRestaurante: async () => null,
   findByMesaAndRestaurante: async () => null,
-  findActivos: async () => [],
   addItems: async () => null,
   updateEstado: async () => null,
   updateItemEstado: async () => null,

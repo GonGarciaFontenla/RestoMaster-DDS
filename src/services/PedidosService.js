@@ -42,10 +42,6 @@ export class PedidosService {
     });
   }
 
-  async getPedidosActivos(restauranteId) {
-    return await this.pedidosRepository.findActivos(restauranteId);
-  }
-
   async getPedidoPorMesa(mesaId, restauranteId) {
     const comanda = await this.pedidosRepository.findByMesaAndRestaurante(
       mesaId,

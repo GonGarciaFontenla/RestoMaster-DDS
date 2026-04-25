@@ -8,11 +8,6 @@ import { comandaSchema } from "../validations/comandaSchema.js";
 export const configurePedidosRoutes = (pedidosController) => {
   const router = Router();
 
-  router.get(
-    "/active",
-    pedidosController.getPedidosActivos.bind(pedidosController),
-  );
-
   router.post(
     "/",
     validateSchema(comandaSchema.pick({ mozo: true, mesa: true })),
