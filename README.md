@@ -1,143 +1,109 @@
-# RestoMaster — Iteración 2: Exposición de APIs, Servicios y DTOs
+# RestoMaster — Explicación y Fundamentación Técnica · Entrega 2
 
-## 🎯 Objetivo de esta iteración
-
-Sobre la base del modelo de dominio de la Iteración 1, se agregan las **capas de servicio, controladores, rutas y DTOs** para exponer la lógica de negocio como una API REST consumible por cualquier cliente HTTP.
+En esta segunda iteración de RestoMaster transformamos la lógica de dominio construida en la Entrega 1 en una API REST completamente funcional y consumible por sistemas externos. A continuación, detallamos paso a paso las decisiones de diseño implementadas y su justificación técnica.
 
 ---
 
-## 📁 Estructura de archivos nueva en esta iteración
+## 1. Separación de Responsabilidades (SoC) y Arquitectura en Capas
 
-```
-src/
-├── services/
-│   ├── MesasService.js       → Lógica de negocio para mesas
-│   ├── MenuService.js        → Lógica de negocio para el menú
-│   ├── PedidosService.js     → Lógica de negocio para comandas
-│   └── ReservasService.js    → Lógica de negocio para reservas
-├── controllers/
-│   ├── MesasController.js    → HTTP handlers para /api/mesas
-│   ├── MenuController.js     → HTTP handlers para /api/menu
-│   ├── PedidosController.js  → HTTP handlers para /api/pedidos
-│   └── ReservasController.js → HTTP handlers para /api/reservas
-├── routes/
-│   ├── MesasRoutes.js
-│   ├── MenuRoutes.js
-│   ├── PedidosRoutes.js
-│   └── ReservasRoutes.js
-├── dtos/
-│   ├── MesasDTO.js           → Filtra qué campos de Mesa se exponen
-│   ├── PlatoDTO.js           → Filtra qué campos de Producto se exponen
-│   └── ReservaDTO.js         → Filtra qué campos de Reserva se exponen
-├── middlewares/
-│   ├── errorHandler.js       → Captura todos los errores de la app y responde en JSON
-│   └── validator.js          → Valida el body de un request con un schema Zod
-├── validations/
-│   ├── mesaSchema.js
-│   ├── productoSchema.js
-│   ├── reservaSchema.js
-│   ├── comandaSchema.js
-│   └── itemComandaSchema.js
-└── app/
-    └── context.js            → Ensambla los objetos (repositorios → servicios → controladores)
+Para mantener el código organizado, testeable y escalable, dividimos la aplicación en capas bien diferenciadas:
 
-index.js                      → Punto de entrada del servidor Express
-```
+- **Rutas (`src/routes/`)**: Definen los endpoints (URL + verbo HTTP) que expone la aplicación y aplican los middlewares de validación. Su única responsabilidad es dirigir el tráfico al controlador correcto.
+- **Controladores (`src/controllers/`)**: Adaptan la petición HTTP cruda (`req` y `res`). Extraen parámetros, invocan la capa de servicios y construyen la respuesta JSON con el código de estado correcto (ej: `200 OK`, `201 Created`).
+- **Servicios (`src/services/`)**: Contienen el verdadero núcleo de la lógica de negocio. Son **agnósticos al protocolo HTTP**: retornan datos puros o lanzan excepciones de dominio. No saben nada de `req` ni de `res`.
+
+**Justificación:** Esta separación evita el anti-patrón de _Fat Controller_ (Controladores Gordos), donde la lógica HTTP y las reglas de negocio coexisten y se acoplan, haciendo el código imposible de testear por separado. Al ser los servicios independientes del protocolo, una migración futura de Express a gRPC, GraphQL o WebSockets dejaría la lógica de negocio completamente intacta (**Principio Abierto/Cerrado**).
 
 ---
 
-## 🏗️ Arquitectura en Capas
+## 2. Servicios Robustos: Casos de Uso Implementados
 
-```
-Request HTTP
-    ↓
-[ Router ]           → define la URL y delega al Controller
-    ↓
-[ Middleware ]        → valida el body (Zod) antes de continuar
-    ↓
-[ Controller ]        → extrae datos del request, llama al Service
-    ↓
-[ Service ]           → contiene la lógica de negocio, usa el Repository
-    ↓
-[ Repository ]        → acceso a datos (stub en memoria en esta iteración)
-    ↓
-[ Controller ]        → formatea la respuesta usando un DTO
-    ↓
-Response HTTP
-```
+Centralizamos las reglas de la aplicación en los siguientes flujos principales:
 
----
+### Gestión de Mesas y Pedidos (Comandas)
 
-## 🔄 Patrón DTO
+A través de `PedidosService` y `MesasService`, garantizamos que la vida de una comanda fluya sin errores:
 
-Los DTOs son funciones puras que transforman un objeto del dominio en una representación segura para el cliente, **ocultando datos sensibles** como el `restauranteId` interno.
+1. **Creación**: Cuando se crea un pedido para una mesa, el servicio valida estrictamente que la mesa exista y comprueba que **no tenga otra comanda abierta activa**.
+2. **Agregar Ítems**: El servicio busca los precios actualizados de los productos en el menú y arma los ítems, garantizando que todo empiece en estado `PENDIENTE` para la cocina.
+3. **Control de Estado**: Para cerrar una comanda, el sistema delega la validación al objeto de dominio `Comanda.cerrarComanda()`, que lanza un `BusinessRuleError` si detecta ítems aún `EN_COCINA`. De esta forma, la regla de negocio vive en un único lugar (**principio DRY**).
 
-```js
-// Sin DTO ❌ — expone datos internos
-res.json(mesa);
-// → { _id, numero, capacidad, ubicacion, estado, restauranteId, __v }
+### Gestión de Reservas
 
-// Con DTO ✅ — solo lo necesario
-res.json(MesasREST(mesa));
-// → { id, numero, capacidad, ubicacion, estado }
-```
+A través de `ReservasService`, expusimos el flujo de agenda de los clientes:
+
+- **Disponibilidad y Creación**: Se valida que la mesa tenga _capacidad adecuada_ para la cantidad de comensales y que el horario solicitado no colisione con una reserva ya existente.
+- **Máquina de Estados**: El servicio implementa métodos explícitos para confirmar (`CONFIRMADA`), cancelar (`CANCELADA`) y registrar el resultado (`ASISTIO` o `NO_SHOW`), bloqueando transiciones ilógicas (ej: no se puede cancelar una reserva que ya ocurrió).
 
 ---
 
-## ✅ Endpoints disponibles
+## 3. Principio Fail-Fast y Validaciones como Cross-Cutting Concern (Zod + Middlewares)
 
-### Menú
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| `GET` | `/api/menu` | Lista los platos (con filtros por query) |
-| `POST` | `/api/menu` | Agrega un nuevo plato |
-| `PUT` | `/api/menu/:id` | Modifica un plato existente |
+No podemos confiar ciegamente en lo que envía el cliente. Implementamos un sistema de **validación de esquemas con Zod** (`src/validations/`) que se acopla como middleware en las rutas. Ejemplos de lo que interceptamos:
 
-### Mesas
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| `GET` | `/api/mesas` | Lista todas las mesas |
-| `POST` | `/api/mesas` | Crea una nueva mesa |
-| `PUT` | `/api/mesas/:id` | Actualiza una mesa |
-| `GET` | `/api/mesas/:tableId/pedidos` | Obtiene el pedido activo de una mesa |
+- Un cliente intenta crear una reserva sin `nombreCliente` o con `telefono` vacío.
+- El frontend envía texto en el campo `horario` en lugar de una fecha ISO válida.
+- Se envía una `cantidadComensales` negativa.
+- Se envía un ID de mesa o producto con formato inválido.
 
-### Pedidos (Comandas)
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| `POST` | `/api/pedidos` | Crea una comanda para una mesa |
-| `GET` | `/api/pedidos/active` | Lista las comandas abiertas |
-| `PATCH` | `/api/pedidos/:id/items` | Agrega ítems a una comanda |
-| `PATCH` | `/api/pedidos/:id/status` | Actualiza el estado de la comanda o un ítem |
+El middleware responde con **HTTP 400 Bad Request** detallando exactamente qué campo falló, sin siquiera invocar al controlador o al servicio.
 
-### Reservas
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| `GET` | `/api/reservas` | Lista reservas (con filtros) |
-| `GET` | `/api/reservas/disponibilidad` | Consulta mesas disponibles |
-| `POST` | `/api/reservas` | Crea una reserva |
-| `GET` | `/api/reservas/:id` | Obtiene una reserva por ID |
-| `PUT` | `/api/reservas/:id` | Actualiza una reserva |
-| `PUT` | `/api/reservas/:id/confirmar` | Confirma una reserva |
-| `PUT` | `/api/reservas/:id/cancelar` | Cancela una reserva |
-| `PUT` | `/api/reservas/:id/asistencia` | Registra asistencia o no-show |
-| `DELETE` | `/api/reservas/:id` | Elimina una reserva |
+**Justificación:** Al validar con Zod en el borde de la aplicación, aplicamos el principio **Fail-Fast** (falla rápido): los errores de formato se abortan en la periferia, protegiendo el núcleo de procesar datos basura. Centralizar la validación la trata como un **Cross-Cutting Concern** (Preocupación Transversal), eliminando la lógica condicional repetitiva (`if (!req.body.campo) return res.status(400)...`) en los controladores y respetando el principio de Responsabilidad Única (**SRP**).
 
 ---
 
-## 🚀 Cómo correr el servidor
+## 4. Patrón DTO (Data Transfer Object) como Capa Anticorrupción
 
-```bash
-npm install
-npm run dev
-```
+Los documentos de Mongoose incluyen campos de infraestructura (`__v`, `restauranteId`) y referencias internas que no le importan al consumidor de la API. Para limpiar esto, implementamos el patrón **DTO** mediante funciones adaptadoras (ej: `PlatoREST` en `src/dtos/PlatoDTO.js`).
 
-El servidor levanta en `http://localhost:4000`.
+Cuando un controlador necesita devolver un plato y responde con `PlatoREST(plato)`, logramos:
 
-> **Nota sobre los repositorios:** En esta iteración los repositorios son **stubs en memoria** que devuelven datos vacíos o ficticios. La conexión real a la base de datos se implementará en la **Iteración 3**.
+1. **Ocultar información**: Omitimos campos de bajo nivel irrelevantes para el cliente.
+2. **Estandarizar formatos**: Mapeamos `_id` a `id`, con un nombre limpio y predecible.
+3. **Proteger el contrato público**: Si el día de mañana se modifica el esquema de la base de datos, el DTO actúa como escudo amortiguador; los clientes web o móviles no verán su código romperse.
+
+**Justificación:** El DTO actúa como una _Anti-Corruption Layer_ hacia el exterior. Al desacoplar el modelo interno de la API pública, respetamos el **Principio de Ocultamiento de Información**: el esquema interno puede evolucionar iterativamente sin romper el _API Contract_ que consumen los clientes.
 
 ---
 
-## 📌 Decisiones de diseño
+## 5. API RESTful y Diseño Orientado a Recursos
 
-- **`req.restauranteId`** en lugar de `req.user.restauranteId`: en esta iteración el `restauranteId` se inyecta mediante un middleware temporal en `index.js`. Cuando se implemente la autenticación JWT (Bonus), ese middleware será reemplazado por one que decodifique el token.
-- **`ReservasService` recibe `mesasRepository` por constructor** en lugar de importar `MesaModel` directamente. Esto mantiene el servicio desacoplado de la base de datos.
+Exponemos endpoints semánticos basados en entidades (`/api/pedidos`, `/api/reservas`, `/api/menu`), usando los verbos HTTP de forma estandarizada:
+
+| Verbo    | Semántica                                               |
+| -------- | ------------------------------------------------------- |
+| `GET`    | Lectura de recursos (idempotente)                       |
+| `POST`   | Creación de un nuevo recurso                            |
+| `PATCH`  | Actualización parcial de un recurso existente           |
+| `PUT`    | Actualización completa o transición de estado explícita |
+| `DELETE` | Eliminación de un recurso                               |
+
+**Justificación:** La arquitectura RESTful aplica los verbos del protocolo HTTP sobre sustantivos que representan recursos. Esto sigue los principios de una **Interfaz Uniforme**, facilitando la predictibilidad, la cacheabilidad de las respuestas y la escalabilidad del sistema sin estado (_stateless_).
+
+### Endpoints disponibles
+
+| Verbo    | Endpoint                       | Descripción                                  |
+| -------- | ------------------------------ | -------------------------------------------- |
+| `GET`    | `/api/menu`                    | Listar productos del menú                    |
+| `POST`   | `/api/menu`                    | Agregar un producto                          |
+| `PATCH`  | `/api/menu/:id`                | Modificar un producto                        |
+| `GET`    | `/api/mesas`                   | Listar mesas                                 |
+| `POST`   | `/api/mesas`                   | Crear mesa                                   |
+| `PATCH`  | `/api/mesas/:id`               | Actualizar mesa                              |
+| `GET`    | `/api/mesas/:id/pedidos`       | Ver comanda activa de una mesa               |
+| `POST`   | `/api/pedidos`                 | Abrir comanda                                |
+| `PATCH`  | `/api/pedidos/:id/items`       | Agregar ítems a la comanda                   |
+| `PATCH`  | `/api/pedidos/:id/status`      | Actualizar estado de comanda o ítem          |
+| `GET`    | `/api/reservas`                | Listar reservas                              |
+| `GET`    | `/api/reservas/disponibilidad` | Consultar mesas disponibles                  |
+| `POST`   | `/api/reservas`                | Crear reserva                                |
+| `GET`    | `/api/reservas/:id`            | Obtener reserva por ID                       |
+| `PUT`    | `/api/reservas/:id`            | Actualizar datos de una reserva              |
+| `PUT`    | `/api/reservas/:id/confirmar`  | Confirmar reserva                            |
+| `PUT`    | `/api/reservas/:id/cancelar`   | Cancelar reserva                             |
+| `PUT`    | `/api/reservas/:id/asistencia` | Registrar asistencia (`ASISTIO` / `NO_SHOW`) |
+| `DELETE` | `/api/reservas/:id`            | Eliminar reserva                             |
+
+---
+
+> **Para explorar el proyecto:** revisá los endpoints en `src/routes/` y probá las llamadas con un cliente HTTP como [Postman](https://www.postman.com/) o [Hoppscotch](https://hoppscotch.io/).

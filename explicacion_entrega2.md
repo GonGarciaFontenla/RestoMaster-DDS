@@ -12,7 +12,7 @@ Para mantener el código organizado, testeable y escalable, dividimos la aplicac
 - **Controladores (`src/controllers/`)**: Adaptan la petición HTTP cruda (`req` y `res`). Extraen parámetros, invocan la capa de servicios y construyen la respuesta JSON con el código de estado correcto (ej: `200 OK`, `201 Created`).
 - **Servicios (`src/services/`)**: Contienen el verdadero núcleo de la lógica de negocio. Son **agnósticos al protocolo HTTP**: retornan datos puros o lanzan excepciones de dominio. No saben nada de `req` ni de `res`.
 
-**Justificación:** Esta separación evita el anti-patrón de *Fat Controller* (Controladores Gordos), donde la lógica HTTP y las reglas de negocio coexisten y se acoplan, haciendo el código imposible de testear por separado. Al ser los servicios independientes del protocolo, una migración futura de Express a gRPC, GraphQL o WebSockets dejaría la lógica de negocio completamente intacta (**Principio Abierto/Cerrado**).
+**Justificación:** Esta separación evita el anti-patrón de _Fat Controller_ (Controladores Gordos), donde la lógica HTTP y las reglas de negocio coexisten y se acoplan, haciendo el código imposible de testear por separado. Al ser los servicios independientes del protocolo, una migración futura de Express a gRPC, GraphQL o WebSockets dejaría la lógica de negocio completamente intacta (**Principio Abierto/Cerrado**).
 
 ---
 
@@ -21,6 +21,7 @@ Para mantener el código organizado, testeable y escalable, dividimos la aplicac
 Centralizamos las reglas de la aplicación en los siguientes flujos principales:
 
 ### Gestión de Mesas y Pedidos (Comandas)
+
 A través de `PedidosService` y `MesasService`, garantizamos que la vida de una comanda fluya sin errores:
 
 1. **Creación**: Cuando se crea un pedido para una mesa, el servicio valida estrictamente que la mesa exista y comprueba que **no tenga otra comanda abierta activa**.
@@ -28,9 +29,10 @@ A través de `PedidosService` y `MesasService`, garantizamos que la vida de una 
 3. **Control de Estado**: Para cerrar una comanda, el sistema delega la validación al objeto de dominio `Comanda.cerrarComanda()`, que lanza un `BusinessRuleError` si detecta ítems aún `EN_COCINA`. De esta forma, la regla de negocio vive en un único lugar (**principio DRY**).
 
 ### Gestión de Reservas
+
 A través de `ReservasService`, expusimos el flujo de agenda de los clientes:
 
-- **Disponibilidad y Creación**: Se valida que la mesa tenga *capacidad adecuada* para la cantidad de comensales y que el horario solicitado no colisione con una reserva ya existente.
+- **Disponibilidad y Creación**: Se valida que la mesa tenga _capacidad adecuada_ para la cantidad de comensales y que el horario solicitado no colisione con una reserva ya existente.
 - **Máquina de Estados**: El servicio implementa métodos explícitos para confirmar (`CONFIRMADA`), cancelar (`CANCELADA`) y registrar el resultado (`ASISTIO` o `NO_SHOW`), bloqueando transiciones ilógicas (ej: no se puede cancelar una reserva que ya ocurrió).
 
 ---
@@ -60,7 +62,7 @@ Cuando un controlador necesita devolver un plato y responde con `PlatoREST(plato
 2. **Estandarizar formatos**: Mapeamos `_id` a `id`, con un nombre limpio y predecible.
 3. **Proteger el contrato público**: Si el día de mañana se modifica el esquema de la base de datos, el DTO actúa como escudo amortiguador; los clientes web o móviles no verán su código romperse.
 
-**Justificación:** El DTO actúa como una *Anti-Corruption Layer* hacia el exterior. Al desacoplar el modelo interno de la API pública, respetamos el **Principio de Ocultamiento de Información**: el esquema interno puede evolucionar iterativamente sin romper el *API Contract* que consumen los clientes.
+**Justificación:** El DTO actúa como una _Anti-Corruption Layer_ hacia el exterior. Al desacoplar el modelo interno de la API pública, respetamos el **Principio de Ocultamiento de Información**: el esquema interno puede evolucionar iterativamente sin romper el _API Contract_ que consumen los clientes.
 
 ---
 
@@ -68,47 +70,39 @@ Cuando un controlador necesita devolver un plato y responde con `PlatoREST(plato
 
 Exponemos endpoints semánticos basados en entidades (`/api/pedidos`, `/api/reservas`, `/api/menu`), usando los verbos HTTP de forma estandarizada:
 
-| Verbo | Semántica |
-|-------|-----------|
-| `GET` | Lectura de recursos (idempotente) |
-| `POST` | Creación de un nuevo recurso |
-| `PATCH` | Actualización parcial de un recurso existente |
-| `PUT` | Actualización completa o transición de estado explícita |
-| `DELETE` | Eliminación de un recurso |
+| Verbo    | Semántica                                               |
+| -------- | ------------------------------------------------------- |
+| `GET`    | Lectura de recursos (idempotente)                       |
+| `POST`   | Creación de un nuevo recurso                            |
+| `PATCH`  | Actualización parcial de un recurso existente           |
+| `PUT`    | Actualización completa o transición de estado explícita |
+| `DELETE` | Eliminación de un recurso                               |
 
-**Justificación:** La arquitectura RESTful aplica los verbos del protocolo HTTP sobre sustantivos que representan recursos. Esto sigue los principios de una **Interfaz Uniforme**, facilitando la predictibilidad, la cacheabilidad de las respuestas y la escalabilidad del sistema sin estado (*stateless*).
+**Justificación:** La arquitectura RESTful aplica los verbos del protocolo HTTP sobre sustantivos que representan recursos. Esto sigue los principios de una **Interfaz Uniforme**, facilitando la predictibilidad, la cacheabilidad de las respuestas y la escalabilidad del sistema sin estado (_stateless_).
 
 ### Endpoints disponibles
 
-| Verbo | Endpoint | Descripción |
-|-------|----------|-------------|
-| `GET` | `/api/menu` | Listar productos del menú |
-| `POST` | `/api/menu` | Agregar un producto |
-| `PATCH` | `/api/menu/:id` | Modificar un producto |
-| `GET` | `/api/mesas` | Listar mesas |
-| `POST` | `/api/mesas` | Crear mesa |
-| `PATCH` | `/api/mesas/:id` | Actualizar mesa |
-| `GET` | `/api/mesas/:id/pedidos` | Ver comanda activa de una mesa |
-| `POST` | `/api/pedidos` | Abrir comanda |
-| `PATCH` | `/api/pedidos/:id/items` | Agregar ítems a la comanda |
-| `PATCH` | `/api/pedidos/:id/status` | Actualizar estado de comanda o ítem |
-| `GET` | `/api/reservas` | Listar reservas |
-| `GET` | `/api/reservas/disponibilidad` | Consultar mesas disponibles |
-| `POST` | `/api/reservas` | Crear reserva |
-| `GET` | `/api/reservas/:id` | Obtener reserva por ID |
-| `PUT` | `/api/reservas/:id` | Actualizar datos de una reserva |
-| `PUT` | `/api/reservas/:id/confirmar` | Confirmar reserva |
-| `PUT` | `/api/reservas/:id/cancelar` | Cancelar reserva |
-| `PUT` | `/api/reservas/:id/asistencia` | Registrar asistencia (`ASISTIO` / `NO_SHOW`) |
-| `DELETE` | `/api/reservas/:id` | Eliminar reserva |
-
----
-
-## 6. (Bonus) Autenticación y Autorización Desacopladas (JWT + Middlewares)
-
-La autenticación basada en **JWT (JSON Web Token)** se implementa como middleware, verificando la identidad del usuario antes de que cualquier controlador o servicio despierte.
-
-**Justificación:** Al implementar la autenticación vía middlewares, aplicamos el patrón **AOP (Programación Orientada a Aspectos)**. Los servicios asumen que el usuario subyacente ya está autenticado y autorizado, delegando completamente esta validación al middleware de JWT. Esto mantiene la lógica de negocio libre de comprobaciones de seguridad reiterativas, adhiriendo nuevamente al principio **SRP**.
+| Verbo    | Endpoint                       | Descripción                                  |
+| -------- | ------------------------------ | -------------------------------------------- |
+| `GET`    | `/api/menu`                    | Listar productos del menú                    |
+| `POST`   | `/api/menu`                    | Agregar un producto                          |
+| `PATCH`  | `/api/menu/:id`                | Modificar un producto                        |
+| `GET`    | `/api/mesas`                   | Listar mesas                                 |
+| `POST`   | `/api/mesas`                   | Crear mesa                                   |
+| `PATCH`  | `/api/mesas/:id`               | Actualizar mesa                              |
+| `GET`    | `/api/mesas/:id/pedidos`       | Ver comanda activa de una mesa               |
+| `POST`   | `/api/pedidos`                 | Abrir comanda                                |
+| `PATCH`  | `/api/pedidos/:id/items`       | Agregar ítems a la comanda                   |
+| `PATCH`  | `/api/pedidos/:id/status`      | Actualizar estado de comanda o ítem          |
+| `GET`    | `/api/reservas`                | Listar reservas                              |
+| `GET`    | `/api/reservas/disponibilidad` | Consultar mesas disponibles                  |
+| `POST`   | `/api/reservas`                | Crear reserva                                |
+| `GET`    | `/api/reservas/:id`            | Obtener reserva por ID                       |
+| `PUT`    | `/api/reservas/:id`            | Actualizar datos de una reserva              |
+| `PUT`    | `/api/reservas/:id/confirmar`  | Confirmar reserva                            |
+| `PUT`    | `/api/reservas/:id/cancelar`   | Cancelar reserva                             |
+| `PUT`    | `/api/reservas/:id/asistencia` | Registrar asistencia (`ASISTIO` / `NO_SHOW`) |
+| `DELETE` | `/api/reservas/:id`            | Eliminar reserva                             |
 
 ---
 
