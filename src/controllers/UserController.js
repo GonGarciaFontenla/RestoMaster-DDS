@@ -7,14 +7,9 @@ export default class UserController {
 
   async login(req, res, next) {
     try {
-      // Fix #3: la validación de email/password fue movida al loginSchema (Zod).
-      // El controller solo se encarga de la lógica HTTP.
       const { email, password } = req.body;
       const { token, user } = await this.userService.login(email, password);
 
-      // Fix #2: maxAge sincronizado con expiresIn del JWT (24h).
-      // Sin maxAge la cookie era una session cookie que el browser eliminaba
-      // al cerrarse, independientemente de la vigencia del token JWT.
       res.cookie("token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -31,7 +26,6 @@ export default class UserController {
     }
   }
 
-  // Fix #18: se agrega next para poder propagar errores inesperados al errorHandler
   async logout(req, res, next) {
     try {
       res.clearCookie("token", {
@@ -39,7 +33,9 @@ export default class UserController {
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
       });
-      return res.status(200).json({ estado: "success", mensaje: "Sesión cerrada" });
+      return res
+        .status(200)
+        .json({ estado: "success", mensaje: "Sesión cerrada" });
     } catch (err) {
       next(err);
     }
@@ -47,10 +43,7 @@ export default class UserController {
 
   async createUser(req, res, next) {
     try {
-      const newUser = await this.userService.register({
-        ...req.body,
-        restauranteId: req.user.restauranteId,
-      });
+      const newUser = await this.userService.register(req.body);
 
       return res.status(201).json({
         estado: "success",
@@ -64,7 +57,7 @@ export default class UserController {
 
   async getUsers(req, res, next) {
     try {
-      const users = await this.userService.retrieveUsers(req.query); // Fix #11: typo corregido
+      const users = await this.userService.retrieveUsers(req.query);
 
       return res.status(200).json({
         estado: "success",
@@ -78,7 +71,10 @@ export default class UserController {
 
   async updateUser(req, res, next) {
     try {
-      const updatedUser = await this.userService.updateUser(req.params.id, req.body);
+      const updatedUser = await this.userService.updateUser(
+        req.params.id,
+        req.body,
+      );
 
       return res.status(200).json({
         estado: "success",

@@ -7,8 +7,7 @@ export default class MesasController {
 
   async getMesas(req, res, next) {
     try {
-      const restauranteId = req.restauranteId;
-      const mesas = await this.mesasService.getMesas(restauranteId);
+      const mesas = await this.mesasService.getMesas();
 
       return res.status(200).json({
         estado: "success",
@@ -22,8 +21,7 @@ export default class MesasController {
 
   async createMesa(req, res, next) {
     try {
-      const restauranteId = req.restauranteId;
-      const mesa = await this.mesasService.createTable(restauranteId, req.body);
+      const mesa = await this.mesasService.createTable(req.body);
 
       return res.status(201).json({
         estado: "success",
@@ -37,11 +35,9 @@ export default class MesasController {
 
   async actualizarMesa(req, res, next) {
     try {
-      const restauranteId = req.restauranteId;
       const mesaActualizada = await this.mesasService.actualizarMesa(
         req.params.id,
         req.body,
-        restauranteId,
       );
 
       return res.status(200).json({

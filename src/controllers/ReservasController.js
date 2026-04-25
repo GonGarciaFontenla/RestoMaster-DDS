@@ -7,10 +7,7 @@ export default class ReservasController {
 
   async obtenerReservas(req, res, next) {
     try {
-      const reservas = await this.reservasService.obtenerReservas(
-        req.restauranteId,
-        req.query,
-      );
+      const reservas = await this.reservasService.obtenerReservas(req.query);
       return res.status(200).json({
         estado: "success",
         mensaje: "Reservas devueltas exitosamente",
@@ -25,7 +22,6 @@ export default class ReservasController {
     try {
       const reserva = await this.reservasService.obtenerReservaById(
         req.params.id,
-        req.restauranteId,
       );
       return res.status(200).json({
         estado: "success",
@@ -39,7 +35,7 @@ export default class ReservasController {
 
   async crearReserva(req, res, next) {
     try {
-      const reserva = await this.reservasService.crearReserva(req.restauranteId, req.body);
+      const reserva = await this.reservasService.crearReserva(req.body);
       return res.status(201).json({
         estado: "success",
         mensaje: "Reserva creada exitosamente",
@@ -54,7 +50,6 @@ export default class ReservasController {
     try {
       const reserva = await this.reservasService.actualizarReserva(
         req.params.id,
-        req.restauranteId,
         req.body,
       );
       return res.status(200).json({
@@ -71,7 +66,6 @@ export default class ReservasController {
     try {
       const { fecha, hora, comensales } = req.query;
       const mesasDisponibles = await this.reservasService.obtenerDisponibilidad(
-        req.restauranteId,
         fecha,
         hora,
         parseInt(comensales),
@@ -90,7 +84,6 @@ export default class ReservasController {
     try {
       const reserva = await this.reservasService.confirmarReserva(
         req.params.id,
-        req.restauranteId,
       );
       return res.status(200).json({
         estado: "success",
@@ -106,7 +99,6 @@ export default class ReservasController {
     try {
       const reserva = await this.reservasService.cancelarReserva(
         req.params.id,
-        req.restauranteId,
       );
       return res.status(200).json({
         estado: "success",
@@ -122,7 +114,6 @@ export default class ReservasController {
     try {
       const reserva = await this.reservasService.registrarAsistencia(
         req.params.id,
-        req.restauranteId,
         req.body.estado,
       );
       return res.status(200).json({
@@ -137,7 +128,7 @@ export default class ReservasController {
 
   async eliminarReserva(req, res, next) {
     try {
-      await this.reservasService.eliminarReserva(req.params.id, req.restauranteId);
+      await this.reservasService.eliminarReserva(req.params.id);
       return res.status(200).json({
         estado: "success",
         mensaje: "Reserva eliminada exitosamente",

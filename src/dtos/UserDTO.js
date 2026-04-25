@@ -1,6 +1,6 @@
 export const UserREST = (usuario) => ({
   id: usuario._id,
-  nombre: usuario.name,
+  nombre: usuario.nombre,
   email: usuario.email,
   tipo: usuario.tipo,
 });

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticate, requireRole } from "../middlewares/auth.js";
-import { validateSchema } from "../middlewares/validator.js";
+import { validateQuery, validateSchema } from "../middlewares/validator.js";
 import { reservaSchema } from "../validations/reservaSchema.js";
 import { asistenciaSchema } from "../validations/asistenciaSchema.js";
 import { TipoUsuario } from "../domain/enums/TipoUsuario.js";
@@ -21,7 +21,6 @@ export const configureReservasRoutes = (reservasController) => {
     reservasController.obtenerDisponibilidad.bind(reservasController),
   );
 
-  // Fix #22: se agrega requireRole para que solo ADMIN y MOZO puedan crear reservas
   router.post(
     "/",
     authenticate,
@@ -58,8 +57,6 @@ export const configureReservasRoutes = (reservasController) => {
     reservasController.cancelarReserva.bind(reservasController),
   );
 
-  // Fix #7: se agrega validateSchema para proteger el endpoint de bodies malformados
-  // (sin estado o con estado inválido que causaba BusinessRuleError confuso)
   router.put(
     "/:id/asistencia",
     authenticate,

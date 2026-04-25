@@ -2,7 +2,9 @@ import { z } from "zod";
 import { EstadoReserva } from "../domain/enums/EstadoReserva.js";
 
 export const reservaSchema = z.object({
-  mesaReservada: z.string({ required_error: "La mesa reservada es obligatoria" }),
+  mesaReservada: z.string({
+    required_error: "La mesa reservada es obligatoria",
+  }),
   nombreCliente: z.string().min(1, "El nombre del cliente es obligatorio"),
   telefono: z.string().min(1, "El teléfono es obligatorio"),
   cantidadComensales: z

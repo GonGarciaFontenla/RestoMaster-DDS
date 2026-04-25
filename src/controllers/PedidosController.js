@@ -5,11 +5,10 @@ export default class PedidosController {
 
   async crearPedido(req, res, next) {
     try {
-      const restauranteId = req.restauranteId;
-      const mozoId = req.body.mozoId;
+      const mozoId = req.body.mozo;
       const mesaId = req.body.mesa;
 
-      const pedido = await this.pedidosService.crearPedido({ mesaId, mozoId, restauranteId });
+      const pedido = await this.pedidosService.crearPedido({ mesaId, mozoId });
 
       return res.status(201).json({
         estado: "success",
@@ -21,27 +20,10 @@ export default class PedidosController {
     }
   }
 
-  async getPedidosActivos(req, res, next) {
-    try {
-      const restauranteId = req.restauranteId;
-      const pedidos = await this.pedidosService.getPedidosActivos(restauranteId);
-
-      return res.status(200).json({
-        estado: "success",
-        mensaje: "Pedidos activos devueltos exitosamente",
-        pedidos,
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-
   async getPedidoPorMesa(req, res, next) {
     try {
-      const restauranteId = req.restauranteId;
       const pedido = await this.pedidosService.getPedidoPorMesa(
         req.params.tableId,
-        restauranteId,
       );
 
       return res.status(200).json({
@@ -56,11 +38,9 @@ export default class PedidosController {
 
   async agregarItems(req, res, next) {
     try {
-      const restauranteId = req.restauranteId;
       const pedidoActualizado = await this.pedidosService.agregarItems(
         req.params.id,
         req.body.items,
-        restauranteId,
       );
 
       return res.status(200).json({
@@ -75,11 +55,9 @@ export default class PedidosController {
 
   async actualizarEstado(req, res, next) {
     try {
-      const restauranteId = req.restauranteId;
       const pedidoActualizado = await this.pedidosService.actualizarEstado(
         req.params.id,
         req.body,
-        restauranteId,
       );
 
       return res.status(200).json({

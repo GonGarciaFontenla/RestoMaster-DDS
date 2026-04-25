@@ -7,8 +7,7 @@ export default class MenuController {
 
   async addPlato(req, res, next) {
     try {
-      const restauranteId = req.restauranteId;
-      const newPlato = await this.menuService.createPlate({ ...req.body, restauranteId });
+      const newPlato = await this.menuService.createPlate(req.body);
 
       return res.status(201).json({
         estado: "success",
@@ -22,8 +21,7 @@ export default class MenuController {
 
   async getMenu(req, res, next) {
     try {
-      const restauranteId = req.restauranteId;
-      const platos = await this.menuService.retrievePlates(req.query, restauranteId);
+      const platos = await this.menuService.retrievePlates(req.query);
 
       return res.status(200).json({
         estado: "success",
@@ -37,11 +35,9 @@ export default class MenuController {
 
   async modificarPlato(req, res, next) {
     try {
-      const restauranteId = req.restauranteId;
       const platoModificado = await this.menuService.modifyPlate(
         req.params.id,
         req.body,
-        restauranteId,
       );
 
       return res.status(200).json({

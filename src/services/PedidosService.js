@@ -12,22 +12,20 @@ export class PedidosService {
     this.mesasRepository = mesasRepository;
   }
 
-  async crearPedido({ mesaId, mozoId, restauranteId }) {
-    const mesa = await this.mesasRepository.findByIdAndRestaurante(mesaId, restauranteId);
+  async crearPedido({ mesaId, mozoId }) {
+    const mesa = await this.mesasRepository.findById(mesaId);
     if (!mesa) {
       throw new NotFoundError(`La mesa con id: ${mesaId}`);
     }
 
-    const comandaExistente = await this.pedidosRepository.findByMesaAndRestaurante(
-      mesaId,
-      restauranteId,
-    );
+    const comandaExistente = await this.pedidosRepository.findByMesa(mesaId);
     if (comandaExistente) {
-      throw new ExistentResource(`Una comanda abierta para la mesa ${mesa.numero}`);
+      throw new ExistentResource(
+        `Una comanda abierta para la mesa ${mesa.numero}`,
+      );
     }
 
     return await this.pedidosRepository.create({
-      restauranteId,
       mozo: mozoId,
       mesa: mesaId,
       estado: EstadoComanda.ABIERTA,
@@ -36,33 +34,30 @@ export class PedidosService {
     });
   }
 
-  async getPedidosActivos(restauranteId) {
-    return await this.pedidosRepository.findActivos(restauranteId);
-  }
-
-  async getPedidoPorMesa(mesaId, restauranteId) {
-    const comanda = await this.pedidosRepository.findByMesaAndRestaurante(mesaId, restauranteId);
+  async getPedidoPorMesa(mesaId) {
+    const comanda = await this.pedidosRepository.findByMesa(mesaId);
     if (!comanda) {
-      throw new NotFoundError(`Una comanda abierta para la mesa con id: ${mesaId}`);
+      throw new NotFoundError(
+        `Una comanda abierta para la mesa con id: ${mesaId}`,
+      );
     }
     return comanda;
   }
 
-  async agregarItems(idPedido, items, restauranteId) {
-    const comanda = await this.pedidosRepository.findByIdAndRestaurante(idPedido, restauranteId);
+  async agregarItems(idPedido, items) {
+    const comanda = await this.pedidosRepository.findById(idPedido);
     if (!comanda) {
       throw new NotFoundError(`El pedido con id: ${idPedido}`);
     }
     if (comanda.estado !== EstadoComanda.ABIERTA) {
-      throw new BusinessRuleError("No se pueden agregar items a una comanda que no está abierta.");
+      throw new BusinessRuleError(
+        "No se pueden agregar items a una comanda que no está abierta.",
+      );
     }
 
     const itemsConPrecio = await Promise.all(
       items.map(async (item) => {
-        const producto = await this.menuRepository.findByIdAndRestaurante(
-          item.producto,
-          restauranteId,
-        );
+        const producto = await this.menuRepository.findById(item.producto);
         if (!producto) {
           throw new NotFoundError(`El producto con id: ${item.producto}`);
         }
@@ -75,11 +70,11 @@ export class PedidosService {
       }),
     );
 
-    return await this.pedidosRepository.addItems(idPedido, restauranteId, itemsConPrecio);
+    return await this.pedidosRepository.addItems(idPedido, itemsConPrecio);
   }
 
-  async actualizarEstado(idPedido, body, restauranteId) {
-    const comanda = await this.pedidosRepository.findByIdAndRestaurante(idPedido, restauranteId);
+  async actualizarEstado(idPedido, body) {
+    const comanda = await this.pedidosRepository.findById(idPedido);
     if (!comanda) {
       throw new NotFoundError(`El pedido con id: ${idPedido}`);
     }
@@ -87,23 +82,21 @@ export class PedidosService {
     if (body.itemId && body.estadoItem) {
       return await this.pedidosRepository.updateItemEstado(
         idPedido,
-        restauranteId,
         body.itemId,
         body.estadoItem,
       );
     }
 
     if (body.estado === EstadoComanda.CERRADA) {
-      // Se reconstruyen los objetos de dominio para delegar la validación
-      // al modelo rico, evitando duplicar la regla de negocio en el servicio.
       const itemsDomain = comanda.items.map(
-        (i) => new ItemComanda(i.producto, i.cantidad, i.precioUnitario, i.estado),
+        (i) =>
+          new ItemComanda(i.producto, i.cantidad, i.precioUnitario, i.estado),
       );
       const comandaDomain = new Comanda(comanda.mozo, comanda.mesa);
       comandaDomain.items = itemsDomain;
       comandaDomain.cerrarComanda(); // Lanza BusinessRuleError si hay ítems EN_COCINA
     }
 
-    return await this.pedidosRepository.updateEstado(idPedido, restauranteId, body.estado);
+    return await this.pedidosRepository.updateEstado(idPedido, body.estado);
   }
 }

@@ -9,4 +9,5 @@ export const productoSchema = z.object({
   }),
   vegetariano: z.boolean().default(false),
   celiaco: z.boolean().default(false),
+  disponible: z.boolean().default(true),
 });
